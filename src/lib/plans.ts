@@ -38,7 +38,7 @@ export const PLANS: Plan[] = [
     id: "basic",
     name: "Basic",
     price: 49,
-    paddlePriceId: process.env.PADDLE_PRICE_BASIC ?? "",
+    paddlePriceId: "pri_01kp4kcjgfdcc993kp5r9bxb2d",
     features: [
       "3 campaigns per month",
       "Ad copy + AI images",
@@ -58,7 +58,7 @@ export const PLANS: Plan[] = [
     id: "pro",
     name: "Pro",
     price: 79,
-    paddlePriceId: process.env.PADDLE_PRICE_PRO ?? "",
+    paddlePriceId: "pri_01kp4kh7qq34nvby72wkryf4ch",
     features: [
       "7 campaigns per month",
       "Everything in Basic",
@@ -77,7 +77,7 @@ export const PLANS: Plan[] = [
     id: "business",
     name: "Business",
     price: 199,
-    paddlePriceId: process.env.PADDLE_PRICE_BUSINESS ?? "",
+    paddlePriceId: "pri_01kp4kn7e0dd5wxscp1aa4mfbd",
     features: [
       "Unlimited campaigns",
       "Everything in Pro",

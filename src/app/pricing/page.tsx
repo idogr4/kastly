@@ -59,7 +59,7 @@ const PLANS = [
     highlight: true,
     badge: "Most Popular",
     cta: "Start Basic Plan",
-    paddlePriceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_BASIC ?? "",
+    paddlePriceId: "pri_01kp4kcjgfdcc993kp5r9bxb2d",
   },
   {
     id: "pro",
@@ -76,7 +76,7 @@ const PLANS = [
     ],
     excluded: [],
     cta: "Start Pro Plan",
-    paddlePriceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO ?? "",
+    paddlePriceId: "pri_01kp4kh7qq34nvby72wkryf4ch",
   },
   {
     id: "business",
@@ -93,7 +93,7 @@ const PLANS = [
     ],
     excluded: [],
     cta: "Start Business Plan",
-    paddlePriceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_BUSINESS ?? "",
+    paddlePriceId: "pri_01kp4kn7e0dd5wxscp1aa4mfbd",
   },
 ];
 

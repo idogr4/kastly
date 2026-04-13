@@ -16,9 +16,9 @@ function getServiceClient() {
 // Map Paddle price IDs to plan IDs
 function getPlanFromPriceId(priceId: string): string {
   const mapping: Record<string, string> = {
-    [process.env.PADDLE_PRICE_BASIC ?? ""]: "basic",
-    [process.env.PADDLE_PRICE_PRO ?? ""]: "pro",
-    [process.env.PADDLE_PRICE_BUSINESS ?? ""]: "business",
+    "pri_01kp4kcjgfdcc993kp5r9bxb2d": "basic",
+    "pri_01kp4kh7qq34nvby72wkryf4ch": "pro",
+    "pri_01kp4kn7e0dd5wxscp1aa4mfbd": "business",
   };
   return mapping[priceId] ?? "free";
 }
