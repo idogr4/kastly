@@ -1,10 +1,10 @@
--- Subscriptions table — tracks Stripe subscription state per user
+-- Subscriptions table — tracks Paddle subscription state per user
 create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
   plan text not null default 'free' check (plan in ('free', 'basic', 'pro', 'business')),
-  stripe_customer_id text,
-  stripe_subscription_id text,
+  paddle_customer_id text,
+  paddle_subscription_id text,
   status text not null default 'active' check (status in ('active', 'canceled', 'past_due', 'trialing')),
   current_period_end timestamptz,
   created_at timestamptz default now(),

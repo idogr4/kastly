@@ -4,7 +4,7 @@ export interface Plan {
   id: PlanId;
   name: string;
   price: number; // monthly in USD, 0 for free
-  stripePriceId: string | null;
+  paddlePriceId: string | null;
   features: string[];
   limits: {
     campaignsPerMonth: number; // -1 = unlimited
@@ -20,7 +20,7 @@ export const PLANS: Plan[] = [
     id: "free",
     name: "Free",
     price: 0,
-    stripePriceId: null,
+    paddlePriceId: null,
     features: [
       "1 campaign — one time only",
       "Text copy only (no images)",
@@ -38,7 +38,7 @@ export const PLANS: Plan[] = [
     id: "basic",
     name: "Basic",
     price: 49,
-    stripePriceId: process.env.STRIPE_PRICE_BASIC ?? "",
+    paddlePriceId: process.env.PADDLE_PRICE_BASIC ?? "",
     features: [
       "3 campaigns per month",
       "Ad copy + AI images",
@@ -58,7 +58,7 @@ export const PLANS: Plan[] = [
     id: "pro",
     name: "Pro",
     price: 79,
-    stripePriceId: process.env.STRIPE_PRICE_PRO ?? "",
+    paddlePriceId: process.env.PADDLE_PRICE_PRO ?? "",
     features: [
       "7 campaigns per month",
       "Everything in Basic",
@@ -77,7 +77,7 @@ export const PLANS: Plan[] = [
     id: "business",
     name: "Business",
     price: 199,
-    stripePriceId: process.env.STRIPE_PRICE_BUSINESS ?? "",
+    paddlePriceId: process.env.PADDLE_PRICE_BUSINESS ?? "",
     features: [
       "Unlimited campaigns",
       "Everything in Pro",

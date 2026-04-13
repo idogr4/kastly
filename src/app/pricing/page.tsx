@@ -1,7 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Script from "next/script";
 import { createClient } from "@/lib/supabase/client";
+
+declare global {
+  interface Window {
+    Paddle?: {
+      Initialize: (opts: { token: string; environment?: string }) => void;
+      Checkout: {
+        open: (opts: {
+          items: Array<{ priceId: string; quantity: number }>;
+          customer?: { email: string };
+          customData?: Record<string, string>;
+          settings?: {
+            successUrl?: string;
+            displayMode?: string;
+            theme?: string;
+          };
+        }) => void;
+      };
+    };
+  }
+}
 
 const PLANS = [
   {
@@ -17,13 +38,9 @@ const PLANS = [
       "A/B variations & quality scores",
       "Persona analysis",
     ],
-    excluded: [
-      "AI-generated images",
-      "Landing page",
-      "Video ad script",
-    ],
+    excluded: ["AI-generated images", "Landing page", "Video ad script"],
     cta: "Get Started Free",
-    stripePriceId: null,
+    paddlePriceId: null as string | null,
   },
   {
     id: "basic",
@@ -42,7 +59,7 @@ const PLANS = [
     highlight: true,
     badge: "Most Popular",
     cta: "Start Basic Plan",
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC ?? "",
+    paddlePriceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_BASIC ?? "",
   },
   {
     id: "pro",
@@ -59,7 +76,7 @@ const PLANS = [
     ],
     excluded: [],
     cta: "Start Pro Plan",
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO ?? "",
+    paddlePriceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO ?? "",
   },
   {
     id: "business",
@@ -76,16 +93,37 @@ const PLANS = [
     ],
     excluded: [],
     cta: "Start Business Plan",
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS ?? "",
+    paddlePriceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_BUSINESS ?? "",
   },
 ];
 
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
+  const [paddleReady, setPaddleReady] = useState(false);
 
-  async function handleSubscribe(planId: string, priceId: string | null) {
+  useEffect(() => {
+    // Initialize Paddle once the script loads
+    if (window.Paddle) {
+      initPaddle();
+    }
+  }, []);
+
+  function initPaddle() {
+    const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
+    if (!token || !window.Paddle) return;
+
+    window.Paddle.Initialize({
+      token,
+      environment: process.env.NEXT_PUBLIC_PADDLE_SANDBOX === "true" ? "sandbox" : undefined,
+    });
+    setPaddleReady(true);
+  }
+
+  async function handleSubscribe(
+    planId: string,
+    priceId: string | null
+  ) {
     if (!priceId) {
-      // Free plan — just redirect to generate
       window.location.href = "/";
       return;
     }
@@ -99,7 +137,6 @@ export default function PricingPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      // Redirect to sign in first
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -109,28 +146,38 @@ export default function PricingPage() {
       return;
     }
 
-    try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId, planId }),
-      });
-
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert(data.error || "Failed to start checkout");
-      }
-    } catch {
-      alert("Something went wrong. Please try again.");
-    } finally {
+    if (!paddleReady || !window.Paddle) {
+      alert("Payment system is loading. Please try again.");
       setLoading(null);
+      return;
     }
+
+    // Open Paddle checkout overlay
+    window.Paddle.Checkout.open({
+      items: [{ priceId, quantity: 1 }],
+      customer: { email: user.email! },
+      customData: {
+        supabase_user_id: user.id,
+        plan_id: planId,
+      },
+      settings: {
+        successUrl: `${window.location.origin}/dashboard?upgraded=true`,
+        displayMode: "overlay",
+        theme: "light",
+      },
+    });
+
+    setLoading(null);
   }
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Paddle.js */}
+      <Script
+        src="https://cdn.paddle.com/paddle/v2/paddle.js"
+        onLoad={initPaddle}
+      />
+
       {/* Navbar */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface/80 backdrop-blur-sm sticky top-0 z-50">
         <a href="/" className="flex items-center gap-2">
@@ -260,7 +307,7 @@ export default function PricingPage() {
                 {/* CTA */}
                 <button
                   onClick={() =>
-                    handleSubscribe(plan.id, plan.stripePriceId)
+                    handleSubscribe(plan.id, plan.paddlePriceId)
                   }
                   disabled={loading === plan.id}
                   className={`w-full py-3 rounded-xl text-sm font-medium transition-all ${
@@ -271,20 +318,20 @@ export default function PricingPage() {
                         : "bg-foreground text-background hover:opacity-90"
                   } ${loading === plan.id ? "opacity-50 cursor-wait" : ""}`}
                 >
-                  {loading === plan.id ? "Redirecting..." : plan.cta}
+                  {loading === plan.id ? "Loading..." : plan.cta}
                 </button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* FAQ / Bottom note */}
+        {/* Bottom note */}
         <div className="mt-16 text-center space-y-3">
           <p className="text-sm text-muted">
             All paid plans include a 7-day free trial. Cancel anytime.
           </p>
           <p className="text-xs text-muted/60">
-            Prices in USD. Powered by Stripe for secure payments.
+            Prices in USD. All taxes handled automatically by Paddle.
           </p>
         </div>
       </main>
