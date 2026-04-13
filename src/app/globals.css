@@ -7,10 +7,14 @@
   --primary-hover: #5a4bd1;
   --secondary: #a29bfe;
   --accent: #fd79a8;
+  --accent-soft: #fff0f6;
   --surface: #ffffff;
   --surface-hover: #f5f3ff;
   --border: #e8e5f0;
   --muted: #717186;
+  --primary-soft: #f0edff;
+  --success: #00b894;
+  --success-soft: #e6faf5;
 }
 
 @theme inline {
@@ -20,10 +24,14 @@
   --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-surface: var(--surface);
   --color-surface-hover: var(--surface-hover);
   --color-border: var(--border);
   --color-muted: var(--muted);
+  --color-primary-soft: var(--primary-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
