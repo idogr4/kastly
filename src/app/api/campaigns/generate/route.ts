@@ -111,6 +111,14 @@ const DEMO_CAMPAIGN = {
     ],
     cta: "Get Your First Bag Free",
   },
+  image_prompts: {
+    facebook:
+      "A warm, inviting flat-lay of freshly roasted coffee beans spilling from a kraft paper bag onto a rustic wooden table, with a steaming ceramic cup of black coffee beside it, morning sunlight streaming in from the left, shallow depth of field, lifestyle photography",
+    instagram:
+      "A close-up overhead shot of a perfectly crafted latte art in a minimal white ceramic cup, surrounded by scattered whole coffee beans on a marble surface, warm golden hour lighting, Instagram-aesthetic composition, square format",
+    linkedin:
+      "A professional photo of a small-batch coffee roasting facility, artisan roaster carefully examining freshly roasted beans, industrial-chic setting with warm lighting, conveying craft and expertise, business photography style",
+  },
 };
 
 export const maxDuration = 120;
@@ -301,6 +309,11 @@ Generate a JSON response with this EXACT structure:
     "hero_subheadline": "supporting subheadline",
     "features": ["feature 1", "feature 2", "feature 3"],
     "cta": "main CTA button text"
+  },
+  "image_prompts": {
+    "facebook": "detailed image generation prompt for a 1200x628 Facebook ad image that matches the business and target audience — describe the scene, lighting, composition, style",
+    "instagram": "detailed image generation prompt for a 1080x1080 Instagram ad image — visually striking, platform-native aesthetic",
+    "linkedin": "detailed image generation prompt for a 1200x627 LinkedIn ad image — professional, authoritative, business-appropriate"
   }
 }
 

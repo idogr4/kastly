@@ -42,7 +42,14 @@ interface Campaign {
     features: string[];
     cta: string;
   };
+  image_prompts?: {
+    facebook: string;
+    instagram: string;
+    linkedin: string;
+  };
 }
+
+type PlatformImages = Record<string, { url: string | null; loading: boolean }>;
 
 type Status = "loading" | "scanning" | "generating" | "done" | "error";
 
@@ -146,7 +153,7 @@ function LoadingState({ status, input, isText }: { status: string; input: string
     {
       key: "generating",
       label: "AI is crafting premium ads...",
-      sublabel: "Building persona, 3 A/B variations per platform, quality scoring",
+      sublabel: "Persona, A/B variations, quality scoring + generating ad images",
     },
   ];
 
@@ -293,6 +300,61 @@ function ResultsView({
   const [selectedVariation, setSelectedVariation] = useState<
     Record<string, number>
   >({ facebook: 0, instagram: 0, linkedin: 0 });
+  const [platformImages, setPlatformImages] = useState<PlatformImages>({
+    facebook: { url: null, loading: true },
+    instagram: { url: null, loading: true },
+    linkedin: { url: null, loading: true },
+  });
+
+  // Generate images on mount
+  useEffect(() => {
+    if (!campaign.image_prompts) {
+      setPlatformImages({
+        facebook: { url: null, loading: false },
+        instagram: { url: null, loading: false },
+        linkedin: { url: null, loading: false },
+      });
+      return;
+    }
+
+    const platformKeys = ["facebook", "instagram", "linkedin"] as const;
+    platformKeys.forEach(async (platform) => {
+      const prompt = campaign.image_prompts?.[platform];
+      if (!prompt) {
+        setPlatformImages((prev) => ({
+          ...prev,
+          [platform]: { url: null, loading: false },
+        }));
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/campaigns/images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, platform }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setPlatformImages((prev) => ({
+            ...prev,
+            [platform]: { url: data.image_url, loading: false },
+          }));
+        } else {
+          setPlatformImages((prev) => ({
+            ...prev,
+            [platform]: { url: null, loading: false },
+          }));
+        }
+      } catch {
+        setPlatformImages((prev) => ({
+          ...prev,
+          [platform]: { url: null, loading: false },
+        }));
+      }
+    });
+  }, [campaign.image_prompts]);
 
   const platforms = [
     {
@@ -489,6 +551,93 @@ function ResultsView({
                     </svg>
                   )}
                 </div>
+
+                {/* Ad Image */}
+                {(() => {
+                  const img = platformImages[platform.key];
+                  const aspectClass =
+                    platform.key === "instagram"
+                      ? "aspect-square"
+                      : "aspect-[1.91/1]";
+                  const sizeLabel =
+                    platform.key === "facebook"
+                      ? "1200 x 628"
+                      : platform.key === "instagram"
+                        ? "1080 x 1080"
+                        : "1200 x 627";
+
+                  return (
+                    <div className="px-5 pt-4">
+                      <p className="text-[10px] uppercase tracking-widest text-muted mb-2">
+                        Ad Image — {sizeLabel}
+                      </p>
+                      <div
+                        className={`${aspectClass} w-full rounded-xl overflow-hidden bg-gradient-to-br from-primary/10 via-accent/5 to-primary/10 border border-border relative`}
+                      >
+                        {img?.loading ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <span className="text-xs text-muted">
+                              Generating image...
+                            </span>
+                          </div>
+                        ) : img?.url ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={img.url}
+                              alt={`${platform.label} ad creative`}
+                              className={`w-full h-full object-cover ${
+                                isLocked ? "blur-lg" : ""
+                              }`}
+                            />
+                            {isLocked && (
+                              <div className="absolute inset-0 bg-surface/30 backdrop-blur-sm flex items-center justify-center">
+                                <div className="flex items-center gap-2 px-4 py-2 bg-surface/90 rounded-xl border border-border shadow-sm">
+                                  <svg
+                                    className="w-4 h-4 text-muted"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                    />
+                                  </svg>
+                                  <span className="text-xs font-medium text-muted">
+                                    Unlock to download
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                            <svg
+                              className="w-8 h-8 text-muted/40"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={1.5}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                            <span className="text-xs text-muted/60">
+                              Image unavailable
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Variation tabs */}
                 {variations.length > 0 && (
