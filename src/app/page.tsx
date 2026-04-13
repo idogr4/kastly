@@ -96,6 +96,18 @@ export default function Home() {
           </span>
         </div>
         <div className="flex items-center gap-4">
+          <a
+            href="/gallery"
+            className="text-sm text-muted hover:text-foreground transition-colors"
+          >
+            Gallery
+          </a>
+          <a
+            href="/pricing"
+            className="text-sm text-muted hover:text-foreground transition-colors"
+          >
+            Pricing
+          </a>
           <button
             onClick={handleGoogleSignIn}
             className="text-sm text-muted hover:text-foreground transition-colors"

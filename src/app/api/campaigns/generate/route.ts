@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import FirecrawlApp from "@mendable/firecrawl-js";
+import { createClient } from "@/lib/supabase/server";
+import { getPlan, type PlanId } from "@/lib/plans";
 
 const DEMO_CAMPAIGN = {
   business_name: "Fresh Roasts Co.",
@@ -195,6 +197,66 @@ export async function POST(request: NextRequest) {
       campaign: DEMO_CAMPAIGN,
       source_url: url,
     });
+  }
+
+  // Check plan limits for authenticated users
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let userPlan: PlanId = "free";
+
+  if (user) {
+    const { data: subscription } = await supabase
+      .from("subscriptions")
+      .select("plan")
+      .eq("user_id", user.id)
+      .single();
+
+    userPlan = (subscription?.plan as PlanId) ?? "free";
+
+    const plan = getPlan(userPlan);
+
+    // Check monthly campaign limit
+    if (plan.limits.campaignsPerMonth !== -1) {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+      const { count } = await supabase
+        .from("campaigns")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .gte("created_at", monthStart);
+
+      const used = count ?? 0;
+
+      // Free plan: 1 campaign ever (not per month)
+      if (userPlan === "free") {
+        const { count: totalCount } = await supabase
+          .from("campaigns")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id);
+
+        if ((totalCount ?? 0) >= 1) {
+          return NextResponse.json(
+            {
+              error: "Free plan allows 1 campaign only. Upgrade to create more.",
+              code: "PLAN_LIMIT",
+            },
+            { status: 403 }
+          );
+        }
+      } else if (used >= plan.limits.campaignsPerMonth) {
+        return NextResponse.json(
+          {
+            error: `You've used all ${plan.limits.campaignsPerMonth} campaigns this month. Upgrade for more.`,
+            code: "PLAN_LIMIT",
+          },
+          { status: 403 }
+        );
+      }
+    }
   }
 
   try {

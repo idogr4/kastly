@@ -300,6 +300,10 @@ function ResultsView({
   const [selectedVariation, setSelectedVariation] = useState<
     Record<string, number>
   >({ facebook: 0, instagram: 0, linkedin: 0 });
+  const [isPublic, setIsPublic] = useState(false);
+  const [industry, setIndustry] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [platformImages, setPlatformImages] = useState<PlatformImages>({
     facebook: { url: null, loading: true },
     instagram: { url: null, loading: true },
@@ -823,19 +827,124 @@ function ResultsView({
           </div>
         </div>
 
+        {/* Save & Gallery */}
+        <div className="mt-8 rounded-2xl border border-border bg-surface overflow-hidden shadow-sm">
+          <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-success flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+            </div>
+            <span className="text-sm font-semibold text-foreground">
+              Save Campaign
+            </span>
+          </div>
+          <div className="p-5 space-y-4">
+            {/* Gallery toggle */}
+            <div className="flex items-start gap-3">
+              <button
+                onClick={() => setIsPublic(!isPublic)}
+                className={`mt-0.5 w-10 h-6 rounded-full transition-colors shrink-0 ${
+                  isPublic ? "bg-primary" : "bg-border"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform mx-1 ${
+                    isPublic ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Show in public gallery
+                </p>
+                <p className="text-xs text-muted mt-0.5">
+                  Let other users see your campaign as inspiration. Your contact
+                  details are never shared.
+                </p>
+              </div>
+            </div>
+
+            {/* Industry tag */}
+            {isPublic && (
+              <div>
+                <label className="text-xs text-muted block mb-1.5">
+                  Industry (optional — helps others find it)
+                </label>
+                <input
+                  type="text"
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  placeholder="e.g. E-commerce, SaaS, Fitness, Real Estate"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                />
+              </div>
+            )}
+
+            {/* Save button */}
+            <button
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  const fbImage = platformImages.facebook?.url;
+                  const res = await fetch("/api/campaigns/save", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      campaign_data: campaign,
+                      source_url: isText ? null : input,
+                      is_public: isPublic,
+                      industry: industry || null,
+                      preview_image_url: fbImage || null,
+                    }),
+                  });
+                  if (res.ok) {
+                    setSaved(true);
+                  } else {
+                    const data = await res.json();
+                    if (data.error === "Not authenticated") {
+                      alert("Please sign in to save campaigns.");
+                    } else {
+                      alert(data.error || "Failed to save");
+                    }
+                  }
+                } catch {
+                  alert("Failed to save campaign");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving || saved}
+              className={`w-full py-3 rounded-xl text-sm font-medium transition-all shadow-sm ${
+                saved
+                  ? "bg-success text-white"
+                  : "bg-foreground text-background hover:opacity-90"
+              } ${saving ? "opacity-50 cursor-wait" : ""}`}
+            >
+              {saved
+                ? "Saved to dashboard!"
+                : saving
+                  ? "Saving..."
+                  : "Save Campaign"}
+            </button>
+          </div>
+        </div>
+
         {/* Bottom CTA */}
         <div className="mt-12 text-center space-y-4 py-8">
           <h3 className="text-xl font-bold text-foreground">
             Want the full package?
           </h3>
           <p className="text-sm text-muted max-w-md mx-auto">
-            Unlock all ad copy, A/B variations, quality scores, persona insights,
-            and a conversion-optimized landing page — ready to publish.
+            Unlock images, landing pages, and more campaigns with a paid plan.
           </p>
-          <button className="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
-            Unlock Everything — $29
-          </button>
-          <p className="text-xs text-muted/60">One-time payment. No subscription.</p>
+          <a
+            href="/pricing"
+            className="inline-block px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all"
+          >
+            View Plans & Pricing
+          </a>
+          <p className="text-xs text-muted/60">Starting at $49/month. Cancel anytime.</p>
         </div>
       </main>
     </div>
