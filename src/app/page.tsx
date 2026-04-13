@@ -16,31 +16,31 @@ const FEATURES = [
     color: "bg-primary-soft text-primary",
   },
   {
-    label: "Images",
-    description: "Branded ads & banners",
+    label: "A/B Variations",
+    description: "3 hooks per platform",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
     ),
     color: "bg-accent-soft text-accent",
   },
   {
-    label: "Video",
-    description: "Short-form & reels",
+    label: "Persona",
+    description: "Deep audience profile",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
     color: "bg-success-soft text-success",
   },
   {
-    label: "Landing Page",
-    description: "Conversion-optimized",
+    label: "Quality Scores",
+    description: "AI-rated per ad",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
     color: "bg-primary-soft text-primary",
@@ -53,13 +53,24 @@ const PLATFORMS = [
   { label: "LinkedIn", icon: "in" },
 ];
 
+type InputMode = "url" | "text";
+
 export default function Home() {
   const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [inputMode, setInputMode] = useState<InputMode>("url");
   const router = useRouter();
 
   function handleGenerate() {
-    if (!url.trim()) return;
-    router.push(`/campaign/preview?url=${encodeURIComponent(url.trim())}`);
+    if (inputMode === "url") {
+      if (!url.trim()) return;
+      router.push(`/campaign/preview?url=${encodeURIComponent(url.trim())}`);
+    } else {
+      if (!description.trim()) return;
+      router.push(
+        `/campaign/preview?description=${encodeURIComponent(description.trim())}`
+      );
+    }
   }
 
   async function handleGoogleSignIn() {
@@ -124,34 +135,86 @@ export default function Home() {
 
             <div className="space-y-4">
               <h1 className="text-5xl sm:text-6xl font-bold text-foreground tracking-tight leading-[1.1]">
-                Paste a URL.
-                <br />
+                {inputMode === "url" ? (
+                  <>
+                    Paste a URL.
+                    <br />
+                  </>
+                ) : (
+                  <>
+                    Describe your business.
+                    <br />
+                  </>
+                )}
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                   Get a full campaign.
                 </span>
               </h1>
               <p className="text-lg text-muted max-w-md mx-auto leading-relaxed">
-                Kastly scans your site and creates everything — copy, images,
-                video, landing page — then publishes across every channel.
+                Kastly deep-scans your brand and creates premium ad copy with
+                A/B variations, audience personas, and quality scores — for
+                every channel.
               </p>
             </div>
 
-            {/* URL Input */}
-            <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://your-business.com"
-                className="flex-1 px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm"
-              />
+            {/* Input mode toggle */}
+            <div className="flex items-center justify-center gap-1 p-1 rounded-xl bg-surface border border-border w-fit mx-auto">
               <button
-                onClick={handleGenerate}
-                className="px-6 py-3.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-all whitespace-nowrap shadow-md hover:shadow-lg"
+                onClick={() => setInputMode("url")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  inputMode === "url"
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
               >
-                Generate Campaign
+                Paste URL
+              </button>
+              <button
+                onClick={() => setInputMode("text")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  inputMode === "text"
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                Describe in Text
               </button>
             </div>
+
+            {/* Input area */}
+            {inputMode === "url" ? (
+              <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://your-business.com"
+                  className="flex-1 px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm"
+                />
+                <button
+                  onClick={handleGenerate}
+                  className="px-6 py-3.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-all whitespace-nowrap shadow-md hover:shadow-lg"
+                >
+                  Generate Campaign
+                </button>
+              </div>
+            ) : (
+              <div className="max-w-lg mx-auto space-y-3">
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="e.g. I'm a fitness trainer in Tel Aviv working with postpartum women. I offer personal training and online programs focused on core recovery and confidence building."
+                  rows={4}
+                  className="w-full px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm resize-none"
+                />
+                <button
+                  onClick={handleGenerate}
+                  className="w-full px-6 py-3.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-all shadow-md hover:shadow-lg"
+                >
+                  Generate Campaign
+                </button>
+              </div>
+            )}
 
             {/* Feature chips — enriched */}
             <div className="flex flex-wrap justify-center gap-2 pt-2">
@@ -191,16 +254,16 @@ export default function Home() {
               How it works
             </h2>
             <p className="text-center text-muted mb-14 max-w-md mx-auto">
-              Three steps. One URL. A full marketing campaign — live everywhere.
+              Three steps. One input. A full marketing campaign — live everywhere.
             </p>
 
             <div className="grid md:grid-cols-3 gap-8">
               {[
                 {
                   step: "1",
-                  title: "Paste your URL",
+                  title: "Paste URL or describe",
                   description:
-                    "Drop your website link. Kastly scans your brand — colors, tone, product, audience — in seconds.",
+                    "Drop your website link or describe your business in free text. Kastly deep-scans multiple pages — homepage, about, products, and reviews.",
                   gradient: "from-primary to-primary",
                   icon: (
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -210,9 +273,9 @@ export default function Home() {
                 },
                 {
                   step: "2",
-                  title: "AI builds the campaign",
+                  title: "AI builds premium ads",
                   description:
-                    "Headlines, ad images, a short video, and a landing page — all generated and matched to your brand.",
+                    "Persona profiling, 3 A/B variations per platform (pain, curiosity, numbers), quality-scored by AI before delivery.",
                   gradient: "from-primary to-accent",
                   icon: (
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -224,7 +287,7 @@ export default function Home() {
                   step: "3",
                   title: "Publish everywhere",
                   description:
-                    "One click sends your campaign to Facebook, Instagram, LinkedIn — or all three at once.",
+                    "One click sends your best-performing variation to Facebook, Instagram, LinkedIn — or all three at once.",
                   gradient: "from-accent to-accent",
                   icon: (
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -264,7 +327,7 @@ export default function Home() {
               See what Kastly generates
             </h2>
             <p className="text-center text-muted mb-14 max-w-md mx-auto">
-              Real output from a single URL — ready to publish.
+              Real output from a single URL — persona, A/B variations, quality scores.
             </p>
 
             <div className="grid md:grid-cols-3 gap-6">
@@ -276,82 +339,81 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </div>
-                  <span className="text-sm font-semibold text-foreground">Ad Copy</span>
+                  <span className="text-sm font-semibold text-foreground">3 Ad Variations</span>
                 </div>
-                <div className="space-y-3 font-mono text-sm">
-                  <div className="p-3 rounded-lg bg-primary-soft/50">
-                    <p className="text-xs uppercase tracking-wide text-muted mb-1">Headline</p>
-                    <p className="text-foreground font-semibold font-sans">Fresh Roasts, Delivered Weekly</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-background">
-                    <p className="text-xs uppercase tracking-wide text-muted mb-1">Body</p>
-                    <p className="text-foreground font-sans text-sm leading-relaxed">Skip the supermarket shelf. Get specialty coffee from local roasters — freshly roasted and at your door every week.</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-accent-soft/50">
-                    <p className="text-xs uppercase tracking-wide text-muted mb-1">CTA</p>
-                    <p className="text-accent font-semibold font-sans">Start Your Free Trial &rarr;</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Image Card */}
-              <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-accent-soft flex items-center justify-center">
-                    <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">Ad Image</span>
-                </div>
-                <div className="aspect-square rounded-xl bg-gradient-to-br from-primary/10 via-accent/10 to-primary/5 border border-border flex flex-col items-center justify-center gap-4 p-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg">
-                    <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold text-foreground text-sm">Fresh Roasts Co.</p>
-                    <p className="text-xs text-muted mt-1">1080 &times; 1080 &bull; Instagram-ready</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="w-4 h-4 rounded-full bg-primary" />
-                    <span className="w-4 h-4 rounded-full bg-accent" />
-                    <span className="w-4 h-4 rounded-full bg-foreground/80" />
-                  </div>
+                <div className="space-y-3 text-sm">
+                  {["Pain hook", "Curiosity hook", "Numbers hook"].map((hook, i) => (
+                    <div key={hook} className="p-3 rounded-lg bg-background">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs uppercase tracking-wide text-muted">{hook}</p>
+                        <span className="text-[10px] font-bold text-primary bg-primary-soft px-1.5 py-0.5 rounded">{9 - i}/10</span>
+                      </div>
+                      <p className="text-foreground font-semibold font-sans text-sm">
+                        {i === 0 && "Your Coffee Was Roasted 4 Months Ago"}
+                        {i === 1 && "Why Do Baristas Smell the Bag First?"}
+                        {i === 2 && "2,847 People Cancelled Their Café Orders"}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Video Card */}
+              {/* Persona Card */}
               <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 rounded-lg bg-success-soft flex items-center justify-center">
                     <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <span className="text-sm font-semibold text-foreground">Short Video</span>
+                  <span className="text-sm font-semibold text-foreground">Target Persona</span>
                 </div>
-                <div className="aspect-[9/16] max-h-[280px] rounded-xl bg-gradient-to-b from-foreground/90 to-foreground flex flex-col items-center justify-between p-5 relative overflow-hidden">
-                  {/* Video preview mock */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-primary/20 via-transparent to-accent/20" />
-                  <div className="relative z-10 text-center mt-auto space-y-3">
-                    <div className="w-12 h-12 mx-auto rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-white font-semibold text-sm">15s Reel</p>
-                      <p className="text-white/60 text-xs mt-0.5">Auto-generated from your brand</p>
-                    </div>
+                <div className="space-y-3 text-sm">
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-xs uppercase tracking-wide text-muted mb-1">Age Range</p>
+                    <p className="text-foreground font-medium">28–42 years old</p>
                   </div>
-                  <div className="relative z-10 flex items-center gap-2 mt-4">
-                    <div className="h-0.5 flex-1 bg-white/20 rounded-full">
-                      <div className="h-full w-1/3 bg-accent rounded-full" />
-                    </div>
-                    <span className="text-white/50 text-[10px]">0:05 / 0:15</span>
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-xs uppercase tracking-wide text-muted mb-1">Top Pain Point</p>
+                    <p className="text-foreground font-medium">Stale supermarket coffee</p>
                   </div>
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-xs uppercase tracking-wide text-muted mb-1">Scroll Stopper</p>
+                    <p className="text-foreground font-medium">Side-by-side freshness comparison</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Score Card */}
+              <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-accent-soft flex items-center justify-center">
+                    <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">Quality Scores</span>
+                </div>
+                <div className="space-y-3 text-sm">
+                  {[
+                    { label: "Hook Strength", score: 9 },
+                    { label: "Message Clarity", score: 9 },
+                    { label: "CTA Effectiveness", score: 8 },
+                    { label: "Platform Fit", score: 9 },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center justify-between p-3 rounded-lg bg-background">
+                      <span className="text-muted">{item.label}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+                            style={{ width: `${item.score * 10}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-bold text-foreground">{item.score}/10</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

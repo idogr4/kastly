@@ -3,12 +3,39 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 
+interface AdScores {
+  hook: number;
+  clarity: number;
+  cta: number;
+  platform_fit: number;
+  overall: number;
+}
+
+interface AdVariation {
+  hook_type: "pain" | "curiosity" | "numbers";
+  headline: string;
+  body: string;
+  cta: string;
+  scores: AdScores;
+}
+
+interface Persona {
+  age_range: string;
+  gender: string;
+  pain_points: string[];
+  desires: string[];
+  scroll_stoppers: string[];
+  objections: string[];
+  tone: string;
+}
+
 interface Campaign {
   business_name: string;
   business_description: string;
-  facebook: { headline: string; body: string; cta: string };
-  instagram: { headline: string; body: string; cta: string };
-  linkedin: { headline: string; body: string; cta: string };
+  persona: Persona;
+  facebook: AdVariation[];
+  instagram: AdVariation[];
+  linkedin: AdVariation[];
   landing_page: {
     hero_headline: string;
     hero_subheadline: string;
@@ -19,33 +46,48 @@ interface Campaign {
 
 type Status = "loading" | "scanning" | "generating" | "done" | "error";
 
+const HOOK_LABELS: Record<string, string> = {
+  pain: "Pain-based",
+  curiosity: "Curiosity-based",
+  numbers: "Numbers-based",
+};
+
+const HOOK_COLORS: Record<string, string> = {
+  pain: "bg-red-50 text-red-600 border-red-200",
+  curiosity: "bg-amber-50 text-amber-600 border-amber-200",
+  numbers: "bg-blue-50 text-blue-600 border-blue-200",
+};
+
 function PreviewContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const url = searchParams.get("url");
+  const description = searchParams.get("description");
 
   const [status, setStatus] = useState<Status>("loading");
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [error, setError] = useState("");
 
+  const input = url || description;
+  const inputLabel = url ? url : "Text description";
+
   useEffect(() => {
-    if (!url) {
+    if (!url && !description) {
       router.push("/");
       return;
     }
 
     async function generate() {
       setStatus("scanning");
-
-      // Small delay to show scanning state
       await new Promise((r) => setTimeout(r, 1500));
       setStatus("generating");
 
       try {
+        const body = url ? { url } : { description };
         const res = await fetch("/api/campaigns/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify(body),
         });
 
         if (!res.ok) {
@@ -63,10 +105,10 @@ function PreviewContent() {
     }
 
     generate();
-  }, [url, router]);
+  }, [url, description, router]);
 
   if (status === "loading" || status === "scanning" || status === "generating") {
-    return <LoadingState status={status} url={url!} />;
+    return <LoadingState status={status} input={inputLabel} isText={!url} />;
   }
 
   if (status === "error") {
@@ -75,7 +117,7 @@ function PreviewContent() {
 
   if (!campaign) return null;
 
-  return <ResultsView campaign={campaign} url={url!} />;
+  return <ResultsView campaign={campaign} input={input!} isText={!url} />;
 }
 
 export default function PreviewPage() {
@@ -94,13 +136,17 @@ export default function PreviewPage() {
 
 /* ---------- Loading ---------- */
 
-function LoadingState({ status, url }: { status: string; url: string }) {
+function LoadingState({ status, input, isText }: { status: string; input: string; isText: boolean }) {
   const steps = [
-    { key: "scanning", label: "Scanning website...", sublabel: url },
+    {
+      key: "scanning",
+      label: isText ? "Analyzing your business..." : "Deep-scanning website...",
+      sublabel: isText ? "Building brand profile from your description" : `Scanning homepage, about, products & reviews — ${input}`,
+    },
     {
       key: "generating",
-      label: "AI is building your campaign...",
-      sublabel: "Creating copy for Facebook, Instagram & LinkedIn",
+      label: "AI is crafting premium ads...",
+      sublabel: "Building persona, 3 A/B variations per platform, quality scoring",
     },
   ];
 
@@ -112,7 +158,7 @@ function LoadingState({ status, url }: { status: string; url: string }) {
         </div>
 
         <div className="space-y-6">
-          {steps.map((step, i) => {
+          {steps.map((step) => {
             const isActive =
               step.key === status ||
               (step.key === "scanning" && status === "loading");
@@ -211,18 +257,42 @@ function ErrorState({
   );
 }
 
+/* ---------- Score Bar ---------- */
+
+function ScoreBar({ label, value }: { label: string; value: number }) {
+  const color =
+    value >= 8 ? "from-green-400 to-green-500" : value >= 6 ? "from-amber-400 to-amber-500" : "from-red-400 to-red-500";
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] text-muted w-20 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+        <div
+          className={`h-full bg-gradient-to-r ${color} rounded-full transition-all`}
+          style={{ width: `${value * 10}%` }}
+        />
+      </div>
+      <span className="text-[10px] font-bold text-foreground w-6 text-right">{value}</span>
+    </div>
+  );
+}
+
 /* ---------- Results ---------- */
 
 function ResultsView({
   campaign,
-  url,
+  input,
+  isText,
 }: {
   campaign: Campaign;
-  url: string;
+  input: string;
+  isText: boolean;
 }) {
   const [unlockedPlatforms, setUnlockedPlatforms] = useState<Set<string>>(
     new Set()
   );
+  const [selectedVariation, setSelectedVariation] = useState<
+    Record<string, number>
+  >({ facebook: 0, instagram: 0, linkedin: 0 });
 
   const platforms = [
     {
@@ -289,14 +359,99 @@ function ResultsView({
           </h1>
           <p className="text-muted mt-1">{campaign.business_description}</p>
           <p className="text-xs text-muted/60 mt-2">
-            Source: {url}
+            {isText ? "From text description" : `Source: ${input}`}
           </p>
         </div>
 
-        {/* Platform cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        {/* Persona Card */}
+        {campaign.persona && (
+          <div className="rounded-2xl border border-border bg-surface overflow-hidden shadow-sm mb-8">
+            <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-foreground">
+                Target Audience Persona
+              </span>
+            </div>
+            <div className="p-5">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="flex-1 p-3 rounded-lg bg-background">
+                      <p className="text-[10px] uppercase tracking-widest text-muted mb-1">Age Range</p>
+                      <p className="text-sm font-medium text-foreground">{campaign.persona.age_range}</p>
+                    </div>
+                    <div className="flex-1 p-3 rounded-lg bg-background">
+                      <p className="text-[10px] uppercase tracking-widest text-muted mb-1">Gender</p>
+                      <p className="text-sm font-medium text-foreground">{campaign.persona.gender}</p>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Pain Points</p>
+                    <ul className="space-y-1.5">
+                      {campaign.persona.pain_points.map((p, i) => (
+                        <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                          <span className="text-red-400 mt-0.5 shrink-0">&#x2022;</span>
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Desires</p>
+                    <ul className="space-y-1.5">
+                      {campaign.persona.desires.map((d, i) => (
+                        <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                          <span className="text-green-400 mt-0.5 shrink-0">&#x2022;</span>
+                          {d}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Scroll Stoppers</p>
+                    <ul className="space-y-1.5">
+                      {campaign.persona.scroll_stoppers.map((s, i) => (
+                        <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                          <span className="text-amber-400 mt-0.5 shrink-0">&#x2022;</span>
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Objections</p>
+                    <ul className="space-y-1.5">
+                      {campaign.persona.objections.map((o, i) => (
+                        <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                          <span className="text-muted mt-0.5 shrink-0">&#x2022;</span>
+                          {o}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-[10px] uppercase tracking-widest text-muted mb-1">Brand Voice</p>
+                    <p className="text-sm text-foreground italic">&ldquo;{campaign.persona.tone}&rdquo;</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Platform cards with A/B variations */}
+        <div className="space-y-6 mb-12">
           {platforms.map((platform) => {
             const isLocked = !unlockedPlatforms.has(platform.key);
+            const variations = Array.isArray(platform.data) ? platform.data : [];
+            const activeIdx = selectedVariation[platform.key] ?? 0;
+            const activeAd = variations[activeIdx];
 
             return (
               <div
@@ -315,6 +470,9 @@ function ResultsView({
                   <span className="text-sm font-semibold text-foreground">
                     {platform.label}
                   </span>
+                  <span className="text-xs text-muted ml-1">
+                    — {variations.length} variations
+                  </span>
                   {isLocked && (
                     <svg
                       className="w-3.5 h-3.5 text-muted ml-auto"
@@ -332,68 +490,112 @@ function ResultsView({
                   )}
                 </div>
 
-                {/* Content */}
-                <div className="p-5 relative">
-                  <div
-                    className={`space-y-4 ${isLocked ? "select-none" : ""}`}
-                  >
-                    {/* Headline — always visible */}
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-muted mb-1">
-                        Headline
-                      </p>
-                      <p className="text-sm font-semibold text-foreground">
-                        {platform.data.headline}
-                      </p>
-                    </div>
-
-                    {/* Body — blurred when locked */}
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-muted mb-1">
-                        Body
-                      </p>
-                      <p
-                        className={`text-sm text-foreground leading-relaxed ${
-                          isLocked ? "blur-[6px]" : ""
-                        }`}
-                      >
-                        {platform.data.body}
-                      </p>
-                    </div>
-
-                    {/* CTA — blurred when locked */}
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-muted mb-1">
-                        CTA
-                      </p>
-                      <p
-                        className={`text-sm font-medium text-accent ${
-                          isLocked ? "blur-[6px]" : ""
-                        }`}
-                      >
-                        {platform.data.cta}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Lock overlay */}
-                  {isLocked && (
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/80 to-transparent flex flex-col items-center justify-end pb-5">
+                {/* Variation tabs */}
+                {variations.length > 0 && (
+                  <div className="px-5 pt-4 flex gap-2">
+                    {variations.map((v, idx) => (
                       <button
+                        key={idx}
                         onClick={() =>
-                          setUnlockedPlatforms((prev) => {
-                            const next = new Set(prev);
-                            next.add(platform.key);
-                            return next;
-                          })
+                          setSelectedVariation((prev) => ({
+                            ...prev,
+                            [platform.key]: idx,
+                          }))
                         }
-                        className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-hover transition-colors shadow-md"
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          activeIdx === idx
+                            ? HOOK_COLORS[v.hook_type] || "bg-gray-50 text-gray-600 border-gray-200"
+                            : "bg-background text-muted border-border hover:border-primary/30"
+                        }`}
                       >
-                        Unlock {platform.label} Copy
+                        {HOOK_LABELS[v.hook_type] || v.hook_type}
+                        {v.scores && (
+                          <span className="ml-1.5 opacity-70">{v.scores.overall}/10</span>
+                        )}
                       </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Active variation content */}
+                {activeAd && (
+                  <div className="p-5 relative">
+                    <div
+                      className={`space-y-4 ${isLocked ? "select-none" : ""}`}
+                    >
+                      {/* Headline — always visible */}
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-muted mb-1">
+                          Headline
+                        </p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {activeAd.headline}
+                        </p>
+                      </div>
+
+                      {/* Body — blurred when locked */}
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-muted mb-1">
+                          Body
+                        </p>
+                        <p
+                          className={`text-sm text-foreground leading-relaxed ${
+                            isLocked ? "blur-[6px]" : ""
+                          }`}
+                        >
+                          {activeAd.body}
+                        </p>
+                      </div>
+
+                      {/* CTA — blurred when locked */}
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-muted mb-1">
+                          CTA
+                        </p>
+                        <p
+                          className={`text-sm font-medium text-accent ${
+                            isLocked ? "blur-[6px]" : ""
+                          }`}
+                        >
+                          {activeAd.cta}
+                        </p>
+                      </div>
+
+                      {/* Quality scores */}
+                      {activeAd.scores && (
+                        <div className={`pt-3 border-t border-border ${isLocked ? "blur-[6px]" : ""}`}>
+                          <p className="text-[10px] uppercase tracking-widest text-muted mb-2">
+                            Quality Score
+                          </p>
+                          <div className="space-y-1.5">
+                            <ScoreBar label="Hook" value={activeAd.scores.hook} />
+                            <ScoreBar label="Clarity" value={activeAd.scores.clarity} />
+                            <ScoreBar label="CTA" value={activeAd.scores.cta} />
+                            <ScoreBar label="Platform fit" value={activeAd.scores.platform_fit} />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+
+                    {/* Lock overlay */}
+                    {isLocked && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/80 to-transparent flex flex-col items-center justify-end pb-5">
+                        <button
+                          onClick={() =>
+                            setUnlockedPlatforms((prev) => {
+                              const next = new Set(prev);
+                              next.add(platform.key);
+                              return next;
+                            })
+                          }
+                          className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-hover transition-colors shadow-md"
+                        >
+                          Unlock {platform.label} Copy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -446,10 +648,7 @@ function ResultsView({
               </p>
               <div className="flex flex-col gap-2 items-center blur-[6px]">
                 {campaign.landing_page.features.map((f, i) => (
-                  <span
-                    key={i}
-                    className="text-sm text-foreground"
-                  >
+                  <span key={i} className="text-sm text-foreground">
                     {f}
                   </span>
                 ))}
@@ -481,8 +680,8 @@ function ResultsView({
             Want the full package?
           </h3>
           <p className="text-sm text-muted max-w-md mx-auto">
-            Unlock all ad copy, images, video script, and a conversion-optimized
-            landing page — ready to publish.
+            Unlock all ad copy, A/B variations, quality scores, persona insights,
+            and a conversion-optimized landing page — ready to publish.
           </p>
           <button className="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
             Unlock Everything — $29
