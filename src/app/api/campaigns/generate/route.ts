@@ -2,6 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import FirecrawlApp from "@mendable/firecrawl-js";
 
+const DEMO_CAMPAIGN = {
+  business_name: "Fresh Roasts Co.",
+  business_description: "Specialty coffee subscription — freshly roasted beans delivered weekly.",
+  facebook: {
+    headline: "Your Morning Coffee, Upgraded",
+    body: "Tired of stale supermarket coffee? ☕ Fresh Roasts Co. delivers specialty beans from local roasters straight to your door — roasted just days before shipping. Join 2,000+ coffee lovers who made the switch.",
+    cta: "Start Your Free Trial →",
+  },
+  instagram: {
+    headline: "Fuel your mornings ☕",
+    body: "From bean to cup in 48 hours. Fresh Roasts Co. partners with local roasters to deliver the freshest coffee you've ever tasted — every single week. #FreshRoasts #CoffeeSubscription #SpecialtyCoffee",
+    cta: "Link in bio — first bag free",
+  },
+  linkedin: {
+    headline: "Rethinking the Coffee Supply Chain",
+    body: "Fresh Roasts Co. connects specialty roasters directly with consumers, cutting out weeks of shelf time. Our subscription model ensures beans arrive within 48 hours of roasting — improving quality while supporting local roasters.",
+    cta: "Learn more about our partner program",
+  },
+  landing_page: {
+    hero_headline: "Coffee So Fresh, You Can Taste the Difference",
+    hero_subheadline: "Specialty beans from top local roasters, delivered to your door within 48 hours of roasting.",
+    features: [
+      "Freshly roasted beans from curated local roasters",
+      "Flexible weekly or bi-weekly delivery schedule",
+      "Free shipping and cancel anytime — no commitment",
+    ],
+    cta: "Get Your First Bag Free",
+  },
+};
+
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
@@ -9,6 +39,14 @@ export async function POST(request: NextRequest) {
 
   if (!url || typeof url !== "string") {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
+  }
+
+  // Demo mode — return mock data without calling external APIs
+  if (url === "demo" || url === "https://demo.com") {
+    return NextResponse.json({
+      campaign: DEMO_CAMPAIGN,
+      source_url: url,
+    });
   }
 
   try {
