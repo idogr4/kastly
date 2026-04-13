@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const FEATURES = [
@@ -54,6 +55,12 @@ const PLATFORMS = [
 
 export default function Home() {
   const [url, setUrl] = useState("");
+  const router = useRouter();
+
+  function handleGenerate() {
+    if (!url.trim()) return;
+    router.push(`/campaign/preview?url=${encodeURIComponent(url.trim())}`);
+  }
 
   async function handleGoogleSignIn() {
     const supabase = createClient();
@@ -139,7 +146,7 @@ export default function Home() {
                 className="flex-1 px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm"
               />
               <button
-                onClick={handleGoogleSignIn}
+                onClick={handleGenerate}
                 className="px-6 py-3.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-all whitespace-nowrap shadow-md hover:shadow-lg"
               >
                 Generate Campaign
