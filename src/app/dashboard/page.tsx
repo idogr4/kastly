@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "./sign-out-button";
+import { CampaignRow } from "./campaign-row";
 
 const PLAN_LABELS: Record<string, { name: string; color: string; limit: string }> = {
   free: { name: "חינם", color: "bg-gray-100 text-gray-700", limit: "קמפיין אחד (חד פעמי)" },
@@ -16,6 +17,12 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "טיוטה",
   processing: "בעיבוד",
 };
+
+interface CampaignStats {
+  views: number;
+  clicks: number;
+  leads: number;
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -39,15 +46,58 @@ export default async function DashboardPage() {
       .single(),
   ]);
 
-  const campaigns = campaignsResult.data;
+  const campaigns = campaignsResult.data ?? [];
   const subscription = subscriptionResult.data;
   const plan = subscription?.plan ?? "free";
   const planInfo = PLAN_LABELS[plan] ?? PLAN_LABELS.free;
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const monthlyCount =
-    campaigns?.filter((c) => c.created_at >= monthStart).length ?? 0;
+  const monthlyCount = campaigns.filter((c) => c.created_at >= monthStart).length;
+
+  // Fetch stats per campaign
+  const campaignIds = campaigns.map((c) => c.id);
+  const stats: Record<string, CampaignStats> = {};
+  let totalViews = 0;
+  let totalClicks = 0;
+  let totalLeads = 0;
+
+  if (campaignIds.length > 0) {
+    const [viewsRes, clicksRes, leadsRes] = await Promise.all([
+      supabase
+        .from("landing_events")
+        .select("campaign_id")
+        .eq("event_type", "view")
+        .in("campaign_id", campaignIds),
+      supabase
+        .from("landing_events")
+        .select("campaign_id")
+        .eq("event_type", "click")
+        .in("campaign_id", campaignIds),
+      supabase
+        .from("leads")
+        .select("campaign_id")
+        .in("campaign_id", campaignIds),
+    ]);
+
+    for (const id of campaignIds) stats[id] = { views: 0, clicks: 0, leads: 0 };
+
+    for (const row of viewsRes.data ?? []) {
+      stats[row.campaign_id].views++;
+      totalViews++;
+    }
+    for (const row of clicksRes.data ?? []) {
+      stats[row.campaign_id].clicks++;
+      totalClicks++;
+    }
+    for (const row of leadsRes.data ?? []) {
+      stats[row.campaign_id].leads++;
+      totalLeads++;
+    }
+  }
+
+  const conversionRate =
+    totalViews > 0 ? Math.round((totalLeads / totalViews) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,7 +134,7 @@ export default async function DashboardPage() {
         </div>
       </nav>
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main className="max-w-5xl mx-auto px-6 py-12">
         <div className="rounded-2xl border border-border bg-surface p-6 mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -144,7 +194,21 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-8">
+        {/* Leads overview */}
+        {campaigns.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <StatCard label="כניסות לדפי נחיתה" value={totalViews} />
+            <StatCard label="לחיצות" value={totalClicks} />
+            <StatCard label="לידים שנאספו" value={totalLeads} />
+            <StatCard
+              label="אחוז המרה"
+              value={`${conversionRate}%`}
+              subtle={totalViews === 0 ? "אין עדיין כניסות" : undefined}
+            />
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-foreground">הקמפיינים שלי</h1>
           <a
             href="/"
@@ -154,7 +218,7 @@ export default async function DashboardPage() {
           </a>
         </div>
 
-        {!campaigns || campaigns.length === 0 ? (
+        {campaigns.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-border rounded-2xl">
             <p className="text-muted text-lg">עוד אין קמפיינים</p>
             <p className="text-muted/60 text-sm mt-1">
@@ -163,57 +227,40 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {campaigns.map((campaign) => (
-              <div
-                key={campaign.id}
-                className="p-5 bg-surface border border-border rounded-xl hover:border-primary/30 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 min-w-0">
-                    {campaign.preview_image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={campaign.preview_image_url}
-                        alt=""
-                        className="w-12 h-12 rounded-lg object-cover shrink-0 border border-border"
-                      />
-                    )}
-                    <div className="min-w-0">
-                      <h3 className="font-medium text-foreground truncate">
-                        {campaign.business_name || campaign.source_url}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {campaign.source_url && (
-                          <p className="text-sm text-muted truncate" dir="ltr">
-                            {campaign.source_url}
-                          </p>
-                        )}
-                        {campaign.is_public && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary-soft text-primary font-medium shrink-0">
-                            פומבי
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <span
-                    className={`text-xs px-3 py-1 rounded-full font-medium shrink-0 ml-4 ${
-                      campaign.status === "ready" ||
-                      campaign.status === "published"
-                        ? "bg-green-100 text-green-700"
-                        : campaign.status === "failed"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-purple-100 text-purple-700"
-                    }`}
-                  >
-                    {STATUS_LABELS[campaign.status] || campaign.status}
-                  </span>
-                </div>
-              </div>
+            {campaigns.map((c) => (
+              <CampaignRow
+                key={c.id}
+                id={c.id}
+                businessName={c.business_name}
+                sourceUrl={c.source_url}
+                previewImageUrl={c.preview_image_url}
+                isPublic={c.is_public}
+                status={c.status}
+                statusLabel={STATUS_LABELS[c.status] || c.status}
+                stats={stats[c.id] || { views: 0, clicks: 0, leads: 0 }}
+              />
             ))}
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  subtle,
+}: {
+  label: string;
+  value: number | string;
+  subtle?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-4">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
+      {subtle && <p className="text-[11px] text-muted/60 mt-0.5">{subtle}</p>}
     </div>
   );
 }

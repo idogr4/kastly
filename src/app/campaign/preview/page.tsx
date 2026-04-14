@@ -29,6 +29,16 @@ interface Persona {
   tone: string;
 }
 
+interface StorySlide {
+  slide: number;
+  role: string;
+  title: string;
+  body: string;
+  cta: string;
+  background_style?: string;
+  visual_prompt?: string;
+}
+
 interface Campaign {
   business_name: string;
   business_description: string;
@@ -47,6 +57,12 @@ interface Campaign {
     instagram: string;
     linkedin: string;
   };
+  stories?: StorySlide[];
+}
+
+interface ChatMsg {
+  role: "user" | "assistant";
+  content: string;
 }
 
 type PlatformImages = Record<string, { url: string | null; loading: boolean }>;
@@ -434,7 +450,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 /* ---------- Results ---------- */
 
 function ResultsView({
-  campaign,
+  campaign: initialCampaign,
   input,
   isText,
   plan,
@@ -446,9 +462,11 @@ function ResultsView({
 }) {
   const isFreePlan = plan === "free" || !plan;
 
+  const [campaign, setCampaign] = useState<Campaign>(initialCampaign);
   const [selectedVariation, setSelectedVariation] = useState<
     Record<string, number>
   >({ facebook: 0, instagram: 0, linkedin: 0 });
+  const [chatOpen, setChatOpen] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [industry, setIndustry] = useState("");
   const [saving, setSaving] = useState(false);
@@ -878,6 +896,42 @@ function ResultsView({
           </div>
         </div>
 
+        {/* Instagram Stories */}
+        {campaign.stories && campaign.stories.length > 0 && (
+          <div className="mt-8 rounded-2xl border border-border bg-surface overflow-hidden shadow-sm">
+            <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-500 to-pink-500" />
+              <span className="text-sm font-semibold text-foreground">
+                סטוריז לאינסטגרם
+              </span>
+              <span className="text-xs text-muted">— 5 שקפים, 1080x1920</span>
+            </div>
+            <div className="p-5">
+              <div className="flex gap-4 overflow-x-auto pb-2 snap-x">
+                {campaign.stories.slice(0, 5).map((s) => (
+                  <StoryCard
+                    key={s.slide}
+                    slide={s}
+                    business={campaign.business_name}
+                    isFreePlan={isFreePlan}
+                  />
+                ))}
+              </div>
+              <div className="mt-4">
+                <CopyButton
+                  label="העתק את כל הסטוריז"
+                  text={campaign.stories
+                    .map(
+                      (s) =>
+                        `שקף ${s.slide} — ${s.role}\n${s.title}\n${s.body}\n${s.cta}`
+                    )
+                    .join("\n\n")}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Save & Gallery */}
         <div className="mt-8 rounded-2xl border border-border bg-surface overflow-hidden shadow-sm">
           <div className="px-5 py-3 border-b border-border flex items-center gap-2">
@@ -974,6 +1028,14 @@ function ResultsView({
           </div>
         </div>
 
+        {/* Chat panel */}
+        <ChatPanel
+          campaign={campaign}
+          onCampaignUpdate={setCampaign}
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+        />
+
         {/* Bottom CTA */}
         <div className="mt-12 text-center space-y-4 py-8">
           <h3 className="text-xl font-bold text-foreground">
@@ -993,6 +1055,416 @@ function ResultsView({
         </div>
       </main>
     </div>
+  );
+}
+
+/* ---------- Story Card ---------- */
+
+const STORY_GRADIENTS = [
+  "from-purple-500 via-pink-500 to-orange-400",
+  "from-blue-500 via-purple-500 to-pink-500",
+  "from-emerald-500 via-teal-500 to-cyan-500",
+  "from-amber-500 via-orange-500 to-red-500",
+  "from-indigo-600 via-purple-600 to-pink-600",
+];
+
+const STORY_ROLE_LABELS: Record<string, string> = {
+  hook: "פתיח",
+  problem: "בעיה",
+  solution: "פתרון",
+  proof: "הוכחה",
+  cta: "קריאה לפעולה",
+};
+
+function StoryCard({
+  slide,
+  business,
+  isFreePlan,
+}: {
+  slide: StorySlide;
+  business: string;
+  isFreePlan: boolean;
+}) {
+  const gradient = STORY_GRADIENTS[(slide.slide - 1) % STORY_GRADIENTS.length];
+  const roleLabel = STORY_ROLE_LABELS[slide.role] || slide.role;
+
+  async function handleDownload() {
+    // Render the story slide to a canvas at 1080x1920 and download
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080;
+    canvas.height = 1920;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const grads: Record<string, string[]> = {
+      "from-purple-500 via-pink-500 to-orange-400": ["#a855f7", "#ec4899", "#fb923c"],
+      "from-blue-500 via-purple-500 to-pink-500": ["#3b82f6", "#a855f7", "#ec4899"],
+      "from-emerald-500 via-teal-500 to-cyan-500": ["#10b981", "#14b8a6", "#06b6d4"],
+      "from-amber-500 via-orange-500 to-red-500": ["#f59e0b", "#f97316", "#ef4444"],
+      "from-indigo-600 via-purple-600 to-pink-600": ["#4f46e5", "#9333ea", "#db2777"],
+    };
+    const [c1, c2, c3] = grads[gradient] || ["#6c5ce7", "#fd79a8", "#6c5ce7"];
+    const lg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    lg.addColorStop(0, c1);
+    lg.addColorStop(0.5, c2);
+    lg.addColorStop(1, c3);
+    ctx.fillStyle = lg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Overlay
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Text
+    ctx.direction = "rtl";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 56px Heebo, Arial, sans-serif";
+    ctx.fillText(`שקף ${slide.slide} • ${roleLabel}`, canvas.width / 2, 180);
+
+    ctx.font = "bold 96px Heebo, Arial, sans-serif";
+    wrapText(ctx, slide.title, canvas.width / 2, 700, canvas.width - 160, 120);
+
+    ctx.font = "48px Heebo, Arial, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    wrapText(ctx, slide.body, canvas.width / 2, 1180, canvas.width - 160, 70);
+
+    // CTA pill
+    if (slide.cta) {
+      const pillW = 700;
+      const pillH = 140;
+      const pillX = (canvas.width - pillW) / 2;
+      const pillY = 1620;
+      ctx.fillStyle = "#ffffff";
+      roundRect(ctx, pillX, pillY, pillW, pillH, 70);
+      ctx.fill();
+      ctx.fillStyle = "#1a1a2e";
+      ctx.font = "bold 52px Heebo, Arial, sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.fillText(slide.cta, canvas.width / 2, pillY + pillH / 2);
+      ctx.textBaseline = "alphabetic";
+    }
+
+    // Watermark for free plan
+    if (isFreePlan) {
+      ctx.save();
+      ctx.font = "bold 54px Heebo, Arial, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 6);
+      for (let y = -2000; y < 2000; y += 260) {
+        for (let x = -1500; x < 1500; x += 380) {
+          ctx.fillText("Kastly", x, y);
+        }
+      }
+      ctx.restore();
+
+      ctx.fillStyle = "rgba(108, 92, 231, 0.9)";
+      roundRect(ctx, canvas.width - 350, canvas.height - 100, 320, 70, 12);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 30px Heebo, Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("נוצר ב-Kastly", canvas.width - 190, canvas.height - 55);
+    }
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const href = URL.createObjectURL(blob);
+      triggerDownload(href, `kastly-story-${slide.slide}-${business}.png`);
+      setTimeout(() => URL.revokeObjectURL(href), 2000);
+    }, "image/png");
+  }
+
+  return (
+    <div className="shrink-0 snap-start w-[220px] space-y-3">
+      <div
+        className={`relative aspect-[9/16] rounded-2xl overflow-hidden bg-gradient-to-br ${gradient} shadow-md`}
+      >
+        <div className="absolute inset-0 bg-black/25" />
+        <div className="absolute inset-0 p-4 flex flex-col">
+          <div className="text-[10px] text-white/80 font-semibold tracking-wider">
+            שקף {slide.slide} • {roleLabel}
+          </div>
+          <div className="flex-1 flex flex-col justify-center text-center">
+            <p className="text-white font-bold text-lg leading-tight mb-2">
+              {slide.title}
+            </p>
+            <p className="text-white/90 text-xs leading-snug">{slide.body}</p>
+          </div>
+          {slide.cta && (
+            <div className="text-center">
+              <span className="inline-block bg-white text-foreground text-[11px] font-bold px-3 py-1.5 rounded-full">
+                {slide.cta}
+              </span>
+            </div>
+          )}
+          {isFreePlan && (
+            <div className="absolute bottom-2 left-2 bg-primary/85 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">
+              Kastly
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-1">
+        <button
+          onClick={handleDownload}
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-primary text-white hover:bg-primary-hover transition-colors"
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+          </svg>
+          הורד
+        </button>
+        <CopyButton
+          text={`${slide.title}\n${slide.body}\n${slide.cta}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number
+) {
+  const words = text.split(" ");
+  let line = "";
+  const lines: string[] = [];
+  for (const w of words) {
+    const test = line ? line + " " + w : w;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  lines.forEach((ln, i) => ctx.fillText(ln, x, y + i * lineHeight));
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ---------- Chat Panel ---------- */
+
+const QUICK_PROMPTS = [
+  "תכתוב גרסה קצרה יותר של כל המודעות",
+  "תוסיף יותר דחיפות לכותרות",
+  "שנה את הטון לפחות רשמי",
+  "תתאים לקהל של נשים 30+",
+  "תכתוב מחדש את הכותרת של פייסבוק",
+  "תחזק את ה-CTA באינסטגרם",
+];
+
+function ChatPanel({
+  campaign,
+  onCampaignUpdate,
+  open,
+  onOpenChange,
+}: {
+  campaign: Campaign;
+  onCampaignUpdate: (c: Campaign) => void;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    {
+      role: "assistant",
+      content:
+        "היי! אני עוזר הקמפיין של Kastly. כתבו לי בחופשיות מה לשפר — לדוגמה: ׳שנה את הטון לפחות רשמי׳, ׳תכתוב גרסה קצרה יותר׳, ׳תוסיף דחיפות לכותרת של פייסבוק׳. אני זוכר את כל הקמפיין ועובד עליו ישירות.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function send(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || sending) return;
+
+    const nextMessages: ChatMsg[] = [
+      ...messages,
+      { role: "user", content: trimmed },
+    ];
+    setMessages(nextMessages);
+    setInput("");
+    setSending(true);
+
+    try {
+      const res = await fetch("/api/campaigns/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaign,
+          message: trimmed,
+          history: messages.filter((m) => m.role !== "assistant" || m.content.length < 1000),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMessages((m) => [
+          ...m,
+          {
+            role: "assistant",
+            content: data.error || "משהו השתבש. נסו שוב.",
+          },
+        ]);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.campaign) {
+        onCampaignUpdate(data.campaign);
+      }
+      setMessages((m) => [
+        ...m,
+        {
+          role: "assistant",
+          content: data.reply || "עדכנתי את הקמפיין.",
+        },
+      ]);
+    } catch {
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: "החיבור נפל. נסו שוב בעוד רגע." },
+      ]);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <>
+      {/* Floating toggle */}
+      <button
+        onClick={() => onOpenChange(!open)}
+        className="fixed bottom-6 left-6 z-40 inline-flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-primary to-accent text-white font-medium shadow-lg hover:shadow-xl transition-all"
+        aria-label="פתיחת עוזר הקמפיין"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        {open ? "סגור צ'אט" : "שיפור עם AI"}
+      </button>
+
+      {/* Panel */}
+      {open && (
+        <div className="fixed inset-y-0 left-0 z-50 w-full sm:w-[420px] bg-surface border-l border-border shadow-2xl flex flex-col">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <span className="text-white font-bold text-xs">AI</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  עוזר הקמפיין
+                </p>
+                <p className="text-[11px] text-muted">מבוסס Claude</p>
+              </div>
+            </div>
+            <button
+              onClick={() => onOpenChange(false)}
+              className="w-8 h-8 rounded-lg hover:bg-background transition-colors flex items-center justify-center text-muted"
+              aria-label="סגירה"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {messages.map((m, i) => (
+              <div
+                key={i}
+                className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}
+              >
+                <div
+                  className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
+                    m.role === "user"
+                      ? "bg-primary text-white rounded-bl-md"
+                      : "bg-background text-foreground rounded-br-md border border-border"
+                  }`}
+                >
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {sending && (
+              <div className="flex justify-end">
+                <div className="px-3.5 py-2.5 rounded-2xl bg-background border border-border">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-border p-3 space-y-2">
+            {messages.length <= 1 && (
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {QUICK_PROMPTS.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => send(q)}
+                    disabled={sending}
+                    className="shrink-0 text-[11px] px-2.5 py-1 rounded-full border border-border bg-background text-muted hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-50"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send(input);
+                  }
+                }}
+                placeholder="כתבו בקשה בעברית..."
+                disabled={sending}
+                className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50"
+              />
+              <button
+                onClick={() => send(input)}
+                disabled={sending || !input.trim()}
+                className="px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
+              >
+                שליחה
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
