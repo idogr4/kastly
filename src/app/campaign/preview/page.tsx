@@ -932,6 +932,13 @@ function ResultsView({
           </div>
         )}
 
+        {/* Video ad */}
+        <VideoSection
+          campaign={campaign}
+          plan={plan}
+          platformImages={platformImages}
+        />
+
         {/* Save & Gallery */}
         <div className="mt-8 rounded-2xl border border-border bg-surface overflow-hidden shadow-sm">
           <div className="px-5 py-3 border-b border-border flex items-center gap-2">
@@ -1465,6 +1472,301 @@ function ChatPanel({
         </div>
       )}
     </>
+  );
+}
+
+/* ---------- Video Section ---------- */
+
+type VideoStatus = "idle" | "starting" | "rendering" | "ready" | "error";
+
+function VideoSection({
+  campaign,
+  plan,
+  platformImages,
+}: {
+  campaign: Campaign;
+  plan: string;
+  platformImages: PlatformImages;
+}) {
+  const isFreePlan = plan === "free" || !plan;
+  const [status, setStatus] = useState<VideoStatus>("idle");
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [elapsed, setElapsed] = useState(0);
+
+  async function startRender() {
+    setStatus("starting");
+    setError("");
+    setVideoUrl(null);
+    setElapsed(0);
+
+    // Best variation across platforms by overall score
+    const allAds = [
+      ...(campaign.facebook || []),
+      ...(campaign.instagram || []),
+      ...(campaign.linkedin || []),
+    ];
+    const bestAd =
+      allAds
+        .filter((a) => a && a.headline)
+        .sort((a, b) => (b.scores?.overall ?? 0) - (a.scores?.overall ?? 0))[0] ||
+      campaign.facebook?.[0];
+
+    if (!bestAd) {
+      setError("לא נמצאה וריאציה מתאימה");
+      setStatus("error");
+      return;
+    }
+
+    const imgs = [
+      platformImages.instagram?.url,
+      platformImages.facebook?.url,
+      platformImages.linkedin?.url,
+    ].filter((x): x is string => !!x);
+
+    try {
+      const res = await fetch("/api/campaigns/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_name: campaign.business_name,
+          headline: bestAd.headline,
+          body: bestAd.body,
+          cta: bestAd.cta,
+          images: imgs,
+          plan,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "יצירת הסרטון נכשלה");
+        setStatus("error");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.status === "succeeded" && data.url) {
+        setVideoUrl(data.url);
+        setStatus("ready");
+        return;
+      }
+
+      if (data.status === "failed") {
+        setError("הרינדור נכשל בשרת. נסו שוב.");
+        setStatus("error");
+        return;
+      }
+
+      if (!data.id) {
+        setError("לא התקבלה תגובה תקינה מהשרת");
+        setStatus("error");
+        return;
+      }
+
+      setStatus("rendering");
+      await pollRender(data.id);
+    } catch {
+      setError("החיבור נפל. נסו שוב.");
+      setStatus("error");
+    }
+  }
+
+  async function pollRender(id: string) {
+    const start = Date.now();
+    const timeoutMs = 4 * 60 * 1000; // 4 minutes
+    while (Date.now() - start < timeoutMs) {
+      setElapsed(Math.floor((Date.now() - start) / 1000));
+      await new Promise((r) => setTimeout(r, 4000));
+      try {
+        const res = await fetch(`/api/campaigns/video?id=${id}`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data.status === "succeeded" && data.url) {
+          setVideoUrl(data.url);
+          setStatus("ready");
+          return;
+        }
+        if (data.status === "failed") {
+          setError("הרינדור נכשל. נסו שוב.");
+          setStatus("error");
+          return;
+        }
+      } catch {
+        // try again
+      }
+    }
+    setError("הרינדור לוקח יותר מדי זמן. נסו שוב.");
+    setStatus("error");
+  }
+
+  async function handleDownload() {
+    if (!videoUrl) return;
+    try {
+      const res = await fetch(videoUrl);
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `kastly-video-${campaign.business_name || "campaign"}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 3000);
+    } catch {
+      // Fallback: open in new tab
+      window.open(videoUrl, "_blank");
+    }
+  }
+
+  const imagesReady =
+    !platformImages.facebook.loading &&
+    !platformImages.instagram.loading &&
+    !platformImages.linkedin.loading;
+
+  return (
+    <div className="mt-8 rounded-2xl border border-border bg-surface overflow-hidden shadow-sm">
+      <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+        <div className="w-6 h-6 rounded-md bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
+          <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
+        <span className="text-sm font-semibold text-foreground">סרטון פרסומת</span>
+        <span className="text-xs text-muted">— 30 שניות, 1080x1920 MP4</span>
+      </div>
+
+      <div className="p-5">
+        <div className="grid md:grid-cols-[280px,1fr] gap-5">
+          {/* Video preview */}
+          <div className="aspect-[9/16] rounded-xl overflow-hidden bg-gradient-to-br from-primary via-accent to-primary relative">
+            {status === "ready" && videoUrl ? (
+              <video
+                src={videoUrl}
+                controls
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : status === "rendering" || status === "starting" ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white p-4 text-center">
+                <div className="w-10 h-10 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm font-medium">
+                  {status === "starting" ? "מתחילים..." : "מרנדרים סרטון..."}
+                </p>
+                {elapsed > 0 && (
+                  <p className="text-xs opacity-80">{elapsed} שניות</p>
+                )}
+                <p className="text-[10px] opacity-70">
+                  בדרך כלל 30-90 שניות
+                </p>
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white p-4 text-center">
+                <svg className="w-12 h-12 opacity-80" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+                <p className="text-sm font-medium">סרטון 30 שניות</p>
+                <p className="text-[11px] opacity-80">כותרת + תמונות + CTA מונפש</p>
+              </div>
+            )}
+          </div>
+
+          {/* Controls */}
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-base font-semibold text-foreground mb-1">
+                הפכו את הקמפיין לסרטון
+              </h3>
+              <p className="text-sm text-muted leading-relaxed">
+                Kastly לוקחת את הוריאציה החזקה ביותר מהקמפיין, בונה סרטון אנכי
+                של 30 שניות עם כותרת, תמונות מונפשות, טקסט ו-CTA — מוכן
+                להעלאה לרילס, סטוריז, טיקטוק או יוטיוב שורטס.
+              </p>
+            </div>
+
+            <ul className="space-y-1.5 text-sm text-foreground">
+              <li className="flex items-start gap-2">
+                <span className="text-success mt-1">•</span>
+                כותרת וגוף מונפשים מתוך המודעה הטובה ביותר
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-success mt-1">•</span>
+                תמונות ה-AI מהקמפיין, עם אפקט kens-burns
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-success mt-1">•</span>
+                CTA גדול בסיום בגוון מבדיל
+              </li>
+              {isFreePlan && (
+                <li className="flex items-start gap-2 text-muted">
+                  <span className="mt-1">•</span>
+                  סימן מים של Kastly (הסר בחבילות בתשלום)
+                </li>
+              )}
+            </ul>
+
+            <div className="flex flex-wrap gap-2 pt-2">
+              {status !== "ready" && (
+                <button
+                  onClick={startRender}
+                  disabled={
+                    status === "starting" || status === "rendering" || !imagesReady
+                  }
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-primary to-accent text-white hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {status === "starting" || status === "rendering" ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      {status === "starting" ? "מתחיל..." : "מרנדר..."}
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      {status === "error" ? "נסו שוב" : "צור סרטון"}
+                    </>
+                  )}
+                </button>
+              )}
+
+              {status === "ready" && videoUrl && (
+                <>
+                  <button
+                    onClick={handleDownload}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-primary text-white hover:bg-primary-hover transition-colors shadow-md"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+                    </svg>
+                    הורד סרטון
+                  </button>
+                  <button
+                    onClick={startRender}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border bg-background hover:bg-surface-hover text-foreground transition-colors"
+                  >
+                    צור גרסה חדשה
+                  </button>
+                </>
+              )}
+            </div>
+
+            {!imagesReady && status === "idle" && (
+              <p className="text-xs text-muted/70">
+                מחכים שהתמונות יסיימו להיטען...
+              </p>
+            )}
+
+            {error && (
+              <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
