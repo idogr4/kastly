@@ -1493,6 +1493,23 @@ function VideoSection({
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [elapsed, setElapsed] = useState(0);
+  const [autoStarted, setAutoStarted] = useState(false);
+
+  const imagesReady =
+    !platformImages.facebook.loading &&
+    !platformImages.instagram.loading &&
+    !platformImages.linkedin.loading;
+
+  // Auto-start rendering once the campaign + images are ready
+  useEffect(() => {
+    if (autoStarted) return;
+    if (status !== "idle") return;
+    if (!campaign?.business_name) return;
+    if (!imagesReady) return;
+    setAutoStarted(true);
+    startRender();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imagesReady, campaign, autoStarted, status]);
 
   async function startRender() {
     setStatus("starting");
@@ -1620,11 +1637,6 @@ function VideoSection({
     }
   }
 
-  const imagesReady =
-    !platformImages.facebook.loading &&
-    !platformImages.instagram.loading &&
-    !platformImages.linkedin.loading;
-
   return (
     <div className="mt-8 rounded-2xl border border-border bg-surface overflow-hidden shadow-sm">
       <div className="px-5 py-3 border-b border-border flex items-center gap-2">
@@ -1679,9 +1691,9 @@ function VideoSection({
                 הפכו את הקמפיין לסרטון
               </h3>
               <p className="text-sm text-muted leading-relaxed">
-                Kastly לוקחת את הוריאציה החזקה ביותר מהקמפיין, בונה סרטון אנכי
-                של 30 שניות עם כותרת, תמונות מונפשות, טקסט ו-CTA — מוכן
-                להעלאה לרילס, סטוריז, טיקטוק או יוטיוב שורטס.
+                Kastly מייצרת אוטומטית סרטון 30 שניות מהקמפיין — כותרת, תיאור
+                ו-CTA עם אנימציות — מוכן להעלאה לרילס, סטוריז, טיקטוק או יוטיוב
+                שורטס.
               </p>
             </div>
 
