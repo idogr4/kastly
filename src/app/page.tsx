@@ -4,61 +4,83 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-const FEATURES = [
-  { label: "טקסטים למודעות", description: "פייסבוק, אינסטגרם, לינקדאין", color: "bg-primary-soft text-primary" },
-  { label: "תמונות AI", description: "מותאמות לכל פלטפורמה", color: "bg-accent-soft text-accent" },
-  { label: "סרטון פרסומת", description: "30 שניות עם קריינות בעברית", color: "bg-success-soft text-success" },
-  { label: "דף נחיתה חי", description: "עם לכידת לידים", color: "bg-primary-soft text-primary" },
-  { label: "5 שקפי Story", description: "מוכנים לאינסטגרם", color: "bg-accent-soft text-accent" },
-  { label: "פרסונת קהל", description: "ניתוח מעמיק", color: "bg-success-soft text-success" },
-];
+type InputMode = "url" | "text";
 
-const DEEP_FEATURES = [
+const ASSETS = [
   {
+    emoji: "📝",
     title: "טקסטים שיווקיים",
     description:
-      "3 וריאציות A/B לכל פלטפורמה (פייסבוק, אינסטגרם, לינקדאין) — כל אחת עם כותרת, גוף ו-CTA, מדורגות לפי ציוני איכות של ה-AI.",
-    icon: "📝",
+      "3 וריאציות A/B לפייסבוק, אינסטגרם ולינקדאין — כל אחת עם כותרת, גוף ו-CTA, מדורגות לפי ציון איכות.",
   },
   {
-    title: "תמונות מותאמות",
+    emoji: "🖼️",
+    title: "תמונות שיווקיות",
     description:
-      "תמונות שיווקיות באיכות גבוהה מ-Flux Pro — בגדלים הנכונים לכל רשת (1200x628 לפייסבוק, 1080x1080 לאינסטגרם, 1200x627 ללינקדאין).",
-    icon: "🎨",
+      "תמונות AI מ-Flux Pro בגדלים המדויקים של כל רשת — 1200×628, 1080×1080, 1200×627.",
   },
   {
-    title: "סרטון פרסומת עם קריינות",
+    emoji: "🎬",
+    title: "סרטון פרסומת",
     description:
-      "MP4 אנכי של 30 שניות — כותרת, תיאור ו-CTA, עם קריינות AI בעברית (קול נוירלי), מוכן להעלאה לרילס, סטוריז וטיקטוק.",
-    icon: "🎬",
+      "MP4 אנכי של 30 שניות עם קריינות AI בעברית, 4 סצנות, מוזיקה ואנימציות בצבעי הברנד.",
   },
   {
+    emoji: "🌐",
     title: "דף נחיתה חי",
     description:
-      "לא רק טיוטה — דף נחיתה ציבורי פעיל לכל קמפיין, עם טופס לכידת לידים, מעקב אחרי כניסות ולחיצות, וייצוא CSV של כל המיילים.",
-    icon: "🌐",
+      "דף נחיתה עם URL ציבורי, טופס לכידת לידים, מעקב כניסות ולחיצות, וייצוא CSV.",
   },
   {
+    emoji: "📱",
     title: "Stories לאינסטגרם",
     description:
-      "5 שקפים בנרטיב בנוי (פתיח → בעיה → פתרון → הוכחה → CTA), מותאמים 1080x1920, כולל הורדה כ-PNG או העתקת טקסט.",
-    icon: "📱",
+      "5 שקפים של 1080×1920 שמספרים סיפור: פתיח, בעיה, פתרון, הוכחה, CTA.",
   },
   {
-    title: "עוזר AI לשיפור",
+    emoji: "💬",
+    title: "צ'אטבוט לשיפור",
     description:
-      "צ'אטבוט בעברית שזוכר את כל הקמפיין. בקשו ממנו לקצר, לשנות טון, לחזק CTA או להתאים לקהל אחר — והוא מעדכן הכול בזמן אמת.",
-    icon: "💬",
+      'בקשו בעברית — "תקצר", "פחות רשמי", "תחזק את ה-CTA" — והצ׳אטבוט עורך את הקמפיין בזמן אמת.',
   },
 ];
 
-const PLATFORMS = [
-  { label: "פייסבוק" },
-  { label: "אינסטגרם" },
-  { label: "לינקדאין" },
+const STEPS = [
+  {
+    number: "01",
+    title: "מדביקים URL או מתארים",
+    description:
+      "כתובת האתר שלכם, או תיאור חופשי של העסק. אין צורך בהכנה.",
+  },
+  {
+    number: "02",
+    title: "AI סורק ומבין לעומק",
+    description:
+      "הבינה המלאכותית סורקת את האתר, מחלצת פרופיל מותג, צבעים, קהל יעד וכאב.",
+  },
+  {
+    number: "03",
+    title: "כל הנכסים נוצרים",
+    description:
+      "טקסטים, תמונות, סרטון, דף נחיתה ו-Stories — הכול בעקביות עיצובית מלאה.",
+  },
+  {
+    number: "04",
+    title: "מורידים ומפרסמים",
+    description:
+      "מעתיקים טקסטים, מורידים תמונות וסרטון, משתפים את דף הנחיתה. מוכן להעלאה.",
+  },
 ];
 
-type InputMode = "url" | "text";
+const PIPELINE_STEPS = [
+  "סורק את האתר",
+  "מחלץ פרופיל מותג",
+  "כותב 9 מודעות",
+  "מייצר 3 תמונות",
+  "בונה 5 שקפי Story",
+  "מרנדר סרטון 30 שניות",
+  "מפרסם דף נחיתה",
+];
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -82,414 +104,300 @@ export default function Home() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      {/* Navbar */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
-            <span className="text-white font-bold text-sm">K</span>
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      {/* ─── NAV ─── */}
+      <nav className="sticky top-0 z-50 border-b border-border bg-surface/80 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
+          <a href="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm">
+              <span className="text-sm font-bold text-white">K</span>
+            </div>
+            <span className="text-lg font-semibold tracking-tight">Kastly</span>
+          </a>
+
+          <div className="hidden items-center gap-6 text-sm text-muted sm:flex">
+            <a href="/gallery" className="transition-colors hover:text-foreground">
+              גלריה
+            </a>
+            <a href="/pricing" className="transition-colors hover:text-foreground">
+              מחירים
+            </a>
+            <a href="/about" className="transition-colors hover:text-foreground">
+              אודות
+            </a>
           </div>
-          <span className="text-xl font-semibold text-foreground tracking-tight">
-            Kastly
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <a
-            href="/gallery"
-            className="text-sm text-muted hover:text-foreground transition-colors"
-          >
-            גלריה
-          </a>
-          <a
-            href="/pricing"
-            className="text-sm text-muted hover:text-foreground transition-colors"
-          >
-            מחירים
-          </a>
-          <a
-            href="/about"
-            className="text-sm text-muted hover:text-foreground transition-colors"
-          >
-            אודות
-          </a>
-          <button
-            onClick={handleGoogleSignIn}
-            className="text-sm text-muted hover:text-foreground transition-colors"
-          >
-            התחברות
-          </button>
-          <button
-            onClick={handleGoogleSignIn}
-            className="text-sm bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors shadow-sm"
-          >
-            יאללה, מתחילים
-          </button>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={handleGoogleSignIn}
+              className="hidden rounded-lg px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground sm:block"
+            >
+              התחברות
+            </button>
+            <button
+              onClick={handleGoogleSignIn}
+              className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background shadow-sm transition-all hover:opacity-90"
+            >
+              התחלה
+            </button>
+          </div>
         </div>
       </nav>
 
       <main className="flex-1">
-        {/* Hero */}
-        <section className="relative overflow-hidden pt-20 pb-16 px-6">
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-primary/5 via-accent/5 to-transparent rounded-full blur-3xl" />
-          </div>
+        {/* ─── HERO ─── */}
+        <section className="relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[600px] bg-gradient-to-b from-primary/5 via-accent/5 to-transparent" />
 
-          <div className="max-w-2xl mx-auto text-center space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-success-soft border border-success/20 text-sm text-success">
-              <span className="flex -space-x-1.5">
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    className="w-5 h-5 rounded-full border-2 border-success-soft bg-gradient-to-br from-primary to-accent inline-block"
-                  />
-                ))}
+          <div className="mx-auto max-w-4xl px-5 py-20 text-center sm:px-8 sm:py-28">
+            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-1.5 text-xs font-medium text-muted">
+              <span className="h-1.5 w-1.5 rounded-full bg-success" />
+              שיווק מלא ב-AI, בעברית
+            </div>
+
+            <h1 className="mx-auto max-w-3xl text-balance text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
+              בנית עסק מדהים.
+              <br />
+              <span className="bg-gradient-to-l from-primary to-accent bg-clip-text text-transparent">
+                אף אחד לא יודע שאתה קיים.
               </span>
-              <span className="font-medium">יותר מ-200 עסקים ישראלים כבר איתנו</span>
-            </div>
+            </h1>
 
-            <div className="space-y-4">
-              <h1 className="text-5xl sm:text-6xl font-bold text-foreground tracking-tight leading-[1.1]">
-                {inputMode === "url" ? (
-                  <>
-                    הדביקו קישור.
-                    <br />
-                  </>
-                ) : (
-                  <>
-                    ספרו על העסק.
-                    <br />
-                  </>
-                )}
-                <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  קבלו קמפיין מלא.
-                </span>
-              </h1>
-              <p className="text-lg text-muted max-w-xl mx-auto leading-relaxed">
-                קמפיין שלם בלחיצה אחת — טקסטים ל-3 רשתות, תמונות AI, סרטון
-                פרסומת עם קריינות בעברית, Stories לאינסטגרם ודף נחיתה חי
-                ללכידת לידים. הכול מותאם לקהל הישראלי.
+            <p className="mx-auto mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted">
+              Kastly הופכת את האתר שלך לחבילת שיווק מלאה — טקסטים, תמונות,
+              סרטון, Stories ודף נחיתה — בלחיצה אחת, בעברית.
+            </p>
+
+            {/* ─── INPUT ─── */}
+            <div className="mx-auto mt-10 max-w-xl">
+              <div className="mb-3 inline-flex rounded-xl border border-border bg-surface p-1 text-sm">
+                <button
+                  onClick={() => setInputMode("url")}
+                  className={`rounded-lg px-4 py-1.5 font-medium transition-all ${
+                    inputMode === "url"
+                      ? "bg-foreground text-background shadow-sm"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  קישור לאתר
+                </button>
+                <button
+                  onClick={() => setInputMode("text")}
+                  className={`rounded-lg px-4 py-1.5 font-medium transition-all ${
+                    inputMode === "text"
+                      ? "bg-foreground text-background shadow-sm"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  תיאור חופשי
+                </button>
+              </div>
+
+              {inputMode === "url" ? (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleGenerate();
+                    }}
+                    placeholder="https://העסק-שלכם.co.il"
+                    dir="ltr"
+                    className="flex-1 rounded-xl border border-border bg-surface px-4 py-3.5 text-right text-foreground placeholder:text-muted/50 shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <button
+                    onClick={handleGenerate}
+                    disabled={!url.trim()}
+                    className="whitespace-nowrap rounded-xl bg-primary px-6 py-3.5 font-medium text-white shadow-md transition-all hover:bg-primary-hover hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    בנו לי קמפיין
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="למשל: מאפייה משפחתית במרכז תל אביב, עובדת עם קמחים אורגניים ולחמים לחמים קלאסיים. יש גם קפה ופינת ישיבה קטנה."
+                    rows={4}
+                    className="w-full resize-none rounded-xl border border-border bg-surface px-4 py-3.5 text-foreground placeholder:text-muted/50 shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <button
+                    onClick={handleGenerate}
+                    disabled={!description.trim()}
+                    className="w-full rounded-xl bg-primary px-6 py-3.5 font-medium text-white shadow-md transition-all hover:bg-primary-hover hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    בנו לי קמפיין
+                  </button>
+                </div>
+              )}
+
+              <p className="mt-3 text-xs text-muted/70">
+                קמפיין ראשון בחינם. בלי אשראי, בלי התחייבות.
               </p>
             </div>
 
-            <div className="flex items-center justify-center gap-1 p-1 rounded-xl bg-surface border border-border w-fit mx-auto">
-              <button
-                onClick={() => setInputMode("url")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  inputMode === "url"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                קישור לאתר
-              </button>
-              <button
-                onClick={() => setInputMode("text")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  inputMode === "text"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                תיאור בטקסט חופשי
-              </button>
-            </div>
-
-            {inputMode === "url" ? (
-              <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://העסק-שלכם.co.il"
-                  dir="ltr"
-                  className="flex-1 px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm text-right"
-                />
-                <button
-                  onClick={handleGenerate}
-                  className="px-6 py-3.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-all whitespace-nowrap shadow-md hover:shadow-lg"
-                >
-                  בנו לי קמפיין
-                </button>
-              </div>
-            ) : (
-              <div className="max-w-lg mx-auto space-y-3">
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="לדוגמה: אני מאמנת כושר בתל אביב, עובדת עם נשים אחרי לידה. מציעה אימונים אישיים ותוכניות אונליין לשיקום הליבה וחזרה לביטחון עצמי."
-                  rows={4}
-                  className="w-full px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm resize-none"
-                />
-                <button
-                  onClick={handleGenerate}
-                  className="w-full px-6 py-3.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-all shadow-md hover:shadow-lg"
-                >
-                  בנו לי קמפיין
-                </button>
-              </div>
-            )}
-
-            <div className="flex flex-wrap justify-center gap-2 pt-2">
-              {FEATURES.map((f) => (
-                <span
-                  key={f.label}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full font-medium ${f.color}`}
-                >
-                  <span>{f.label}</span>
-                  <span className="text-xs opacity-60">— {f.description}</span>
+            {/* ─── PROGRESS ANIMATION ─── */}
+            <div
+              aria-hidden
+              className="mx-auto mt-12 max-w-xl rounded-2xl border border-border bg-surface/60 p-4 text-right shadow-sm backdrop-blur"
+            >
+              <div className="mb-3 flex items-center justify-between text-[11px] uppercase tracking-widest text-muted">
+                <span>מה קורה אחרי שמדביקים URL</span>
+                <span className="flex gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" />
                 </span>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-center gap-4 text-sm text-muted">
-              <span>פרסום ב-</span>
-              <div className="flex gap-2">
-                {PLATFORMS.map((p) => (
-                  <span
-                    key={p.label}
-                    className="px-2.5 py-1 rounded-md bg-surface border border-border text-xs font-medium text-foreground"
+              </div>
+              <ul className="space-y-2">
+                {PIPELINE_STEPS.map((step) => (
+                  <li
+                    key={step}
+                    className="pipeline-step flex items-center gap-3 text-sm text-foreground"
                   >
-                    {p.label}
-                  </span>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span className="text-muted">{step}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           </div>
         </section>
 
-        {/* How it works */}
-        <section className="py-20 px-6 bg-surface border-y border-border">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-center text-foreground mb-4">
-              איך זה עובד
-            </h2>
-            <p className="text-center text-muted mb-14 max-w-md mx-auto">
-              שלושה שלבים. קלט אחד. קמפיין שיווקי מלא — לייב בכל הערוצים.
-            </p>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  step: "1",
-                  title: "מדביקים קישור או מתארים",
-                  description:
-                    "הדביקו את כתובת האתר או תארו את העסק בטקסט חופשי. Kastly סורקת לעומק כמה עמודים — ראשי, אודות, מוצרים, המלצות.",
-                  gradient: "from-primary to-primary",
-                },
-                {
-                  step: "2",
-                  title: "ה-AI בונה מודעות מנצחות",
-                  description:
-                    "ניתוח פרסונה, 3 וריאציות A/B לכל פלטפורמה (כאב, סקרנות, מספרים), וציוני איכות לפני שמוציאים החוצה.",
-                  gradient: "from-primary to-accent",
-                },
-                {
-                  step: "3",
-                  title: "מפרסמים בכל הערוצים",
-                  description:
-                    "בלחיצה אחת — שולחים את הוריאציה המנצחת לפייסבוק, אינסטגרם ולינקדאין. או לכל שלושתם ביחד.",
-                  gradient: "from-accent to-accent",
-                },
-              ].map((item) => (
-                <div
-                  key={item.step}
-                  className="relative text-center group"
-                >
-                  <div
-                    className={`w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform font-bold text-xl`}
-                  >
-                    {item.step}
-                  </div>
-                  <span className="text-xs font-semibold text-primary uppercase tracking-widest">
-                    שלב {item.step}
-                  </span>
-                  <h3 className="text-lg font-semibold text-foreground mt-1 mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-muted leading-relaxed">
-                    {item.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* What you get */}
-        <section className="py-20 px-6">
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl font-bold text-center text-foreground mb-4">
-              מה מקבלים בכל קמפיין
-            </h2>
-            <p className="text-center text-muted mb-14 max-w-lg mx-auto">
-              לא עוד כלי שמייצר "פוסט" או "באנר". Kastly מוציאה חבילה
-              שיווקית מלאה — הכול ברמת פריסה, לא סקיצה.
-            </p>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {DEEP_FEATURES.map((f) => (
-                <div
-                  key={f.title}
-                  className="rounded-2xl border border-border bg-surface p-6 hover:shadow-md transition-shadow"
-                >
-                  <div className="text-3xl mb-3">{f.icon}</div>
-                  <h3 className="text-base font-semibold text-foreground mb-1.5">
-                    {f.title}
-                  </h3>
-                  <p className="text-sm text-muted leading-relaxed">
-                    {f.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-10 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/5 to-primary/10 p-6 text-center">
-              <p className="text-sm text-foreground leading-relaxed max-w-2xl mx-auto">
-                <strong>הכול בעברית, מותאם לקהל ישראלי</strong> — דוגמאות
-                מקומיות, טון ישיר וחם, דרישות העברית ב-RTL, מחירים בשקלים,
-                ותאריכים בפורמט ישראלי.
+        {/* ─── ASSETS GRID ─── */}
+        <section className="border-y border-border bg-surface">
+          <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
+            <div className="mx-auto mb-16 max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                מה תקבלו בכל קמפיין
+              </h2>
+              <p className="mt-4 text-muted">
+                לא עוד "פוסט" או "באנר". חבילת שיווק מלאה — הכול ברמת פריסה,
+                לא סקיצה.
               </p>
             </div>
-          </div>
-        </section>
 
-        {/* Example output */}
-        <section className="py-20 px-6">
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl font-bold text-center text-foreground mb-4">
-              מה Kastly יוצרת
-            </h2>
-            <p className="text-center text-muted mb-14 max-w-md mx-auto">
-              דוגמה אמיתית מקישור אחד — פרסונה, וריאציות A/B, ציוני איכות.
-            </p>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {/* Ad Copy Card */}
-              <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-sm font-semibold text-foreground">3 וריאציות מודעה</span>
-                </div>
-                <div className="space-y-3 text-sm">
-                  {[
-                    { hook: "וריאציית כאב", text: "הקפה שלך נטחן לפני 4 חודשים" },
-                    { hook: "וריאציית סקרנות", text: "למה ברמן מריח את השקית לפני הכול?" },
-                    { hook: "וריאציית מספרים", text: "2,847 ישראלים ויתרו על בית קפה החודש" },
-                  ].map((v, i) => (
-                    <div key={v.hook} className="p-3 rounded-lg bg-background">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs uppercase tracking-wide text-muted">{v.hook}</p>
-                        <span className="text-[10px] font-bold text-primary bg-primary-soft px-1.5 py-0.5 rounded">{9 - i}/10</span>
-                      </div>
-                      <p className="text-foreground font-semibold text-sm">
-                        {v.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Persona Card */}
-              <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-sm font-semibold text-foreground">פרסונת יעד</span>
-                </div>
-                <div className="space-y-3 text-sm">
-                  <div className="p-3 rounded-lg bg-background">
-                    <p className="text-xs uppercase tracking-wide text-muted mb-1">טווח גילאים</p>
-                    <p className="text-foreground font-medium">28–42</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {ASSETS.map((asset) => (
+                <div
+                  key={asset.title}
+                  className="group rounded-2xl border border-border bg-background p-6 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                >
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-xl">
+                    {asset.emoji}
                   </div>
-                  <div className="p-3 rounded-lg bg-background">
-                    <p className="text-xs uppercase tracking-wide text-muted mb-1">נקודת כאב עיקרית</p>
-                    <p className="text-foreground font-medium">קפה בסופר שאיבד את הטעם</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-background">
-                    <p className="text-xs uppercase tracking-wide text-muted mb-1">עוצר גלילה</p>
-                    <p className="text-foreground font-medium">השוואה צד-לצד של טריות</p>
-                  </div>
+                  <h3 className="text-base font-semibold">{asset.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {asset.description}
+                  </p>
                 </div>
-              </div>
-
-              {/* Score Card */}
-              <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-sm font-semibold text-foreground">ציוני איכות</span>
-                </div>
-                <div className="space-y-3 text-sm">
-                  {[
-                    { label: "עוצמת הוק", score: 9 },
-                    { label: "בהירות מסר", score: 9 },
-                    { label: "אפקטיביות CTA", score: 8 },
-                    { label: "התאמה לפלטפורמה", score: 9 },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between p-3 rounded-lg bg-background">
-                      <span className="text-muted">{item.label}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
-                            style={{ width: `${item.score * 10}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-bold text-foreground">{item.score}/10</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-20 px-6 bg-gradient-to-b from-primary-soft/50 to-background">
-          <div className="max-w-lg mx-auto text-center space-y-6">
-            <h2 className="text-3xl font-bold text-foreground">
-              מוכנים להריץ את הקמפיין הבא?
+        {/* ─── PROCESS ─── */}
+        <section className="mx-auto max-w-5xl px-5 py-20 sm:px-8 sm:py-28">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              ארבעה צעדים, שש דקות
             </h2>
-            <p className="text-muted">
-              הצטרפו ל-200+ עסקים ישראלים שעושים שיווק חכם יותר עם Kastly.
-              מתחילים בחינם — בלי אשראי.
+            <p className="mt-4 text-muted">
+              אותו תהליך שהיה לוקח שבועות עם סוכנות — קורה אוטומטית.
+            </p>
+          </div>
+
+          <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((step) => (
+              <li
+                key={step.number}
+                className="relative rounded-2xl border border-border bg-surface p-6"
+              >
+                <span className="font-mono text-xs font-bold text-primary">
+                  {step.number}
+                </span>
+                <h3 className="mt-2 text-base font-semibold">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {step.description}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* ─── HONESTY NOTE ─── */}
+        <section className="border-t border-border bg-surface">
+          <div className="mx-auto max-w-3xl px-5 py-16 text-center sm:px-8">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              בלי שקרים שיווקיים
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-pretty leading-relaxed text-muted">
+              Kastly לא תמציא לכם סטטיסטיקות, לא תכתוב על פרסים שלא קיבלתם,
+              ולא תכניס ציטוטים של לקוחות מדומים. אם חסר מידע באתר שלכם, ה-AI
+              יכתוב טקסט חזק על הערך הכללי במקום למלא את החסר בבדיה.
+            </p>
+          </div>
+        </section>
+
+        {/* ─── FINAL CTA ─── */}
+        <section className="relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-primary-soft/40 to-transparent" />
+          <div className="mx-auto max-w-3xl px-5 py-24 text-center sm:px-8">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              מוכנים שהעולם ידע שאתם קיימים?
+            </h2>
+            <p className="mx-auto mt-4 max-w-lg text-muted">
+              קמפיין אחד בחינם. כל הנכסים, להורדה. בלי אשראי.
             </p>
             <button
-              onClick={handleGoogleSignIn}
-              className="inline-flex items-center gap-3 px-6 py-3.5 bg-surface border border-border rounded-xl hover:bg-surface-hover transition-all shadow-sm hover:shadow-md"
+              onClick={() => {
+                document.querySelector("input[type=url], textarea")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                const el = document.querySelector<HTMLElement>(
+                  "input[type=url], textarea"
+                );
+                el?.focus();
+              }}
+              className="mt-8 rounded-xl bg-primary px-8 py-3.5 font-medium text-white shadow-md transition-all hover:bg-primary-hover hover:shadow-lg"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  fill="#EA4335"
-                />
-              </svg>
-              <span className="text-sm font-medium text-foreground">
-                התחברות עם Google
-              </span>
+              בנו לי קמפיין עכשיו
             </button>
           </div>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="py-6 text-center text-sm text-muted border-t border-border">
-        Kastly &copy; {new Date().getFullYear()} — נבנה בישראל באהבה
+      {/* ─── FOOTER ─── */}
+      <footer className="border-t border-border bg-surface">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 text-sm text-muted sm:flex-row sm:px-8">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
+              <span className="text-[10px] font-bold text-white">K</span>
+            </div>
+            <span>Kastly © {new Date().getFullYear()}</span>
+          </div>
+          <div className="flex items-center gap-5">
+            <a href="/pricing" className="hover:text-foreground">
+              מחירים
+            </a>
+            <a href="/gallery" className="hover:text-foreground">
+              גלריה
+            </a>
+            <a href="/about" className="hover:text-foreground">
+              אודות
+            </a>
+          </div>
+        </div>
       </footer>
     </div>
   );

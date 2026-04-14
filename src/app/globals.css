@@ -49,3 +49,26 @@ body {
 [dir="rtl"] .ltr {
   direction: ltr;
 }
+
+@keyframes kastly-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pipeline-step {
+  opacity: 0;
+  animation: kastly-fade-up 0.5s ease-out forwards;
+}
+.pipeline-step:nth-child(1) { animation-delay: 300ms; }
+.pipeline-step:nth-child(2) { animation-delay: 550ms; }
+.pipeline-step:nth-child(3) { animation-delay: 800ms; }
+.pipeline-step:nth-child(4) { animation-delay: 1050ms; }
+.pipeline-step:nth-child(5) { animation-delay: 1300ms; }
+.pipeline-step:nth-child(6) { animation-delay: 1550ms; }
+.pipeline-step:nth-child(7) { animation-delay: 1800ms; }
