@@ -27,72 +27,72 @@ declare global {
 const PLANS = [
   {
     id: "free",
-    name: "Free",
+    name: "חינם",
     price: 0,
-    period: "one time",
-    description: "Try Kastly once — on us",
+    period: "חד פעמי",
+    description: "לנסות את Kastly — עלינו",
     features: [
-      "1 campaign — one time only",
-      "Text copy only",
-      "3 platforms (Facebook, Instagram, LinkedIn)",
-      "A/B variations & quality scores",
-      "Persona analysis",
+      "קמפיין אחד — חד פעמי",
+      "טקסט בלבד",
+      "3 פלטפורמות (פייסבוק, אינסטגרם, לינקדאין)",
+      "וריאציות A/B וציוני איכות",
+      "ניתוח פרסונה",
     ],
-    excluded: ["AI-generated images", "Landing page", "Video ad script"],
-    cta: "Get Started Free",
+    excluded: ["תמונות AI באיכות מלאה", "דף נחיתה", "סקריפט לסרטון"],
+    cta: "מתחילים בחינם",
     paddlePriceId: null as string | null,
   },
   {
     id: "basic",
-    name: "Basic",
-    price: 49,
-    period: "/month",
-    description: "For growing businesses",
+    name: "בסיסי",
+    price: 99,
+    period: "/חודש",
+    description: "לעסקים שצומחים",
     features: [
-      "3 campaigns per month",
-      "Ad copy + AI images",
-      "Landing page generation",
-      "Persona & quality scores",
-      "Priority support",
+      "3 קמפיינים בחודש",
+      "טקסטים + תמונות AI",
+      "דף נחיתה מוכן",
+      "פרסונה וציוני איכות",
+      "תמיכה בעדיפות",
     ],
-    excluded: ["Video ad script"],
+    excluded: ["סקריפט לסרטון"],
     highlight: true,
-    badge: "Most Popular",
-    cta: "Start Basic Plan",
+    badge: "הכי פופולרי",
+    cta: "התחלת חבילת בסיסי",
     paddlePriceId: "pri_01kp4kcjgfdcc993kp5r9bxb2d",
   },
   {
     id: "pro",
-    name: "Pro",
-    price: 79,
-    period: "/month",
-    description: "Full creative suite",
+    name: "פרו",
+    price: 179,
+    period: "/חודש",
+    description: "חבילה יצירתית מלאה",
     features: [
-      "7 campaigns per month",
-      "Everything in Basic",
-      "Video ad script generation",
-      "Advanced audience insights",
-      "Export to all formats",
+      "7 קמפיינים בחודש",
+      "כל מה שיש בבסיסי",
+      "סקריפט לסרטון פרסומת",
+      "תובנות קהל מתקדמות",
+      "ייצוא לכל הפורמטים",
     ],
     excluded: [],
-    cta: "Start Pro Plan",
+    cta: "התחלת חבילת פרו",
     paddlePriceId: "pri_01kp4kh7qq34nvby72wkryf4ch",
   },
   {
     id: "business",
-    name: "Business",
-    price: 199,
-    period: "/month",
-    description: "For agencies & teams",
+    name: "עסקי",
+    price: 449,
+    period: "/חודש",
+    description: "לסוכנויות וצוותים",
     features: [
-      "Unlimited campaigns",
-      "Everything in Pro",
-      "Team collaboration",
-      "White-label exports",
-      "Dedicated account manager",
+      "קמפיינים ללא הגבלה",
+      "כל מה שיש בפרו",
+      "עבודת צוות",
+      "ייצוא white-label",
+      "מנהל לקוח ייעודי",
     ],
     excluded: [],
-    cta: "Start Business Plan",
+    cta: "התחלת חבילת עסקי",
     paddlePriceId: "pri_01kp4kn7e0dd5wxscp1aa4mfbd",
   },
 ];
@@ -102,7 +102,6 @@ export default function PricingPage() {
   const [paddleReady, setPaddleReady] = useState(false);
 
   useEffect(() => {
-    // Initialize Paddle once the script loads
     if (window.Paddle) {
       initPaddle();
     }
@@ -130,7 +129,6 @@ export default function PricingPage() {
 
     setLoading(planId);
 
-    // Check if user is authenticated
     const supabase = createClient();
     const {
       data: { user },
@@ -147,12 +145,11 @@ export default function PricingPage() {
     }
 
     if (!paddleReady || !window.Paddle) {
-      alert("Payment system is loading. Please try again.");
+      alert("מערכת התשלום בטעינה. נסו שוב בעוד רגע.");
       setLoading(null);
       return;
     }
 
-    // Open Paddle checkout overlay
     window.Paddle.Checkout.open({
       items: [{ priceId, quantity: 1 }],
       customer: { email: user.email! },
@@ -172,13 +169,11 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Paddle.js */}
       <Script
         src="https://cdn.paddle.com/paddle/v2/paddle.js"
         onLoad={initPaddle}
       />
 
-      {/* Navbar */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface/80 backdrop-blur-sm sticky top-0 z-50">
         <a href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
@@ -189,34 +184,28 @@ export default function PricingPage() {
           </span>
         </a>
         <div className="flex items-center gap-4">
-          <a
-            href="/gallery"
-            className="text-sm text-muted hover:text-foreground transition-colors"
-          >
-            Gallery
+          <a href="/gallery" className="text-sm text-muted hover:text-foreground transition-colors">
+            גלריה
           </a>
-          <a
-            href="/dashboard"
-            className="text-sm text-muted hover:text-foreground transition-colors"
-          >
-            Dashboard
+          <a href="/about" className="text-sm text-muted hover:text-foreground transition-colors">
+            אודות
+          </a>
+          <a href="/dashboard" className="text-sm text-muted hover:text-foreground transition-colors">
+            האיזור שלי
           </a>
         </div>
       </nav>
 
       <main className="max-w-6xl mx-auto px-6 py-16">
-        {/* Header */}
         <div className="text-center mb-14 space-y-4">
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">
-            Simple, transparent pricing
+            מחירים הוגנים, בלי הפתעות
           </h1>
           <p className="text-lg text-muted max-w-md mx-auto">
-            Start free. Upgrade when you need images, landing pages, or more
-            campaigns.
+            מתחילים בחינם. משדרגים כשצריכים תמונות, דפי נחיתה או עוד קמפיינים.
           </p>
         </div>
 
-        {/* Plans grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {PLANS.map((plan) => (
             <div
@@ -228,13 +217,12 @@ export default function PricingPage() {
               }`}
             >
               {plan.badge && (
-                <div className="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-xl">
+                <div className="absolute top-0 left-0 bg-primary text-white text-[10px] font-bold tracking-wider px-3 py-1 rounded-br-xl">
                   {plan.badge}
                 </div>
               )}
 
               <div className="p-6 flex-1 flex flex-col">
-                {/* Plan name & price */}
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-foreground">
                     {plan.name}
@@ -243,12 +231,12 @@ export default function PricingPage() {
                   <div className="mt-4 flex items-baseline gap-1">
                     {plan.price === 0 ? (
                       <span className="text-4xl font-bold text-foreground">
-                        Free
+                        חינם
                       </span>
                     ) : (
                       <>
                         <span className="text-4xl font-bold text-foreground">
-                          ${plan.price}
+                          ₪{plan.price}
                         </span>
                         <span className="text-muted text-sm">
                           {plan.period}
@@ -258,7 +246,6 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                {/* Features */}
                 <ul className="space-y-2.5 mb-6 flex-1">
                   {plan.features.map((f) => (
                     <li
@@ -272,20 +259,13 @@ export default function PricingPage() {
                         stroke="currentColor"
                         strokeWidth={2.5}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M5 13l4 4L19 7"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                       {f}
                     </li>
                   ))}
                   {plan.excluded.map((f) => (
-                    <li
-                      key={f}
-                      className="flex items-start gap-2 text-sm text-muted/50"
-                    >
+                    <li key={f} className="flex items-start gap-2 text-sm text-muted/50">
                       <svg
                         className="w-4 h-4 mt-0.5 shrink-0"
                         fill="none"
@@ -293,22 +273,15 @@ export default function PricingPage() {
                         stroke="currentColor"
                         strokeWidth={2}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                       <span className="line-through">{f}</span>
                     </li>
                   ))}
                 </ul>
 
-                {/* CTA */}
                 <button
-                  onClick={() =>
-                    handleSubscribe(plan.id, plan.paddlePriceId)
-                  }
+                  onClick={() => handleSubscribe(plan.id, plan.paddlePriceId)}
                   disabled={loading === plan.id}
                   className={`w-full py-3 rounded-xl text-sm font-medium transition-all ${
                     plan.highlight
@@ -318,20 +291,19 @@ export default function PricingPage() {
                         : "bg-foreground text-background hover:opacity-90"
                   } ${loading === plan.id ? "opacity-50 cursor-wait" : ""}`}
                 >
-                  {loading === plan.id ? "Loading..." : plan.cta}
+                  {loading === plan.id ? "טוען..." : plan.cta}
                 </button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Bottom note */}
         <div className="mt-16 text-center space-y-3">
           <p className="text-sm text-muted">
-            All paid plans include a 7-day free trial. Cancel anytime.
+            כל החבילות כוללות 7 ימי ניסיון חינם. אפשר לבטל בכל רגע.
           </p>
           <p className="text-xs text-muted/60">
-            Prices in USD. All taxes handled automatically by Paddle.
+            המחירים בשקלים. מע״מ ומיסים מטופלים אוטומטית דרך Paddle.
           </p>
         </div>
       </main>

@@ -32,12 +32,20 @@
   --color-primary-soft: var(--primary-soft);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-heebo);
+}
+
+html {
+  direction: rtl;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-heebo), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* RTL: flip common directional utilities where needed */
+[dir="rtl"] .ltr {
+  direction: ltr;
 }

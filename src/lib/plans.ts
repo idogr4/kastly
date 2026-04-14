@@ -3,7 +3,7 @@ export type PlanId = "free" | "basic" | "pro" | "business";
 export interface Plan {
   id: PlanId;
   name: string;
-  price: number; // monthly in USD, 0 for free
+  price: number; // monthly in ILS, 0 for free
   paddlePriceId: string | null;
   features: string[];
   limits: {
@@ -18,14 +18,15 @@ export interface Plan {
 export const PLANS: Plan[] = [
   {
     id: "free",
-    name: "Free",
+    name: "חינם",
     price: 0,
     paddlePriceId: null,
     features: [
-      "1 campaign — one time only",
-      "Text copy only (no images)",
-      "3 platforms (Facebook, Instagram, LinkedIn)",
-      "A/B variations & quality scores",
+      "קמפיין אחד — חד פעמי",
+      "טקסט בלבד (ללא תמונות)",
+      "3 פלטפורמות (פייסבוק, אינסטגרם, לינקדאין)",
+      "וריאציות A/B וציוני איכות",
+      "תמונות עם סימן מים של Kastly",
     ],
     limits: {
       campaignsPerMonth: 1,
@@ -36,15 +37,15 @@ export const PLANS: Plan[] = [
   },
   {
     id: "basic",
-    name: "Basic",
-    price: 49,
+    name: "בסיסי",
+    price: 99,
     paddlePriceId: "pri_01kp4kcjgfdcc993kp5r9bxb2d",
     features: [
-      "3 campaigns per month",
-      "Ad copy + AI images",
-      "Landing page generation",
-      "Persona & quality scores",
-      "Priority support",
+      "3 קמפיינים בחודש",
+      "טקסטים + תמונות AI",
+      "דף נחיתה מוכן",
+      "פרסונה וציוני איכות",
+      "תמיכה בעדיפות",
     ],
     limits: {
       campaignsPerMonth: 3,
@@ -56,15 +57,15 @@ export const PLANS: Plan[] = [
   },
   {
     id: "pro",
-    name: "Pro",
-    price: 79,
+    name: "פרו",
+    price: 179,
     paddlePriceId: "pri_01kp4kh7qq34nvby72wkryf4ch",
     features: [
-      "7 campaigns per month",
-      "Everything in Basic",
-      "Video ad script generation",
-      "Advanced audience insights",
-      "Export to all formats",
+      "7 קמפיינים בחודש",
+      "כל מה שיש בבסיסי",
+      "סקריפט לסרטון פרסומת",
+      "תובנות קהל מתקדמות",
+      "ייצוא לכל הפורמטים",
     ],
     limits: {
       campaignsPerMonth: 7,
@@ -75,15 +76,15 @@ export const PLANS: Plan[] = [
   },
   {
     id: "business",
-    name: "Business",
-    price: 199,
+    name: "עסקי",
+    price: 449,
     paddlePriceId: "pri_01kp4kn7e0dd5wxscp1aa4mfbd",
     features: [
-      "Unlimited campaigns",
-      "Everything in Pro",
-      "Team collaboration",
-      "White-label exports",
-      "Dedicated account manager",
+      "קמפיינים ללא הגבלה",
+      "כל מה שיש בפרו",
+      "עבודת צוות",
+      "ייצוא white-label",
+      "מנהל לקוח ייעודי",
     ],
     limits: {
       campaignsPerMonth: -1,

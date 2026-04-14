@@ -3,10 +3,18 @@ import { redirect } from "next/navigation";
 import { SignOutButton } from "./sign-out-button";
 
 const PLAN_LABELS: Record<string, { name: string; color: string; limit: string }> = {
-  free: { name: "Free", color: "bg-gray-100 text-gray-700", limit: "1 campaign (one time)" },
-  basic: { name: "Basic", color: "bg-blue-100 text-blue-700", limit: "3 campaigns/month" },
-  pro: { name: "Pro", color: "bg-purple-100 text-purple-700", limit: "7 campaigns/month" },
-  business: { name: "Business", color: "bg-amber-100 text-amber-700", limit: "Unlimited" },
+  free: { name: "חינם", color: "bg-gray-100 text-gray-700", limit: "קמפיין אחד (חד פעמי)" },
+  basic: { name: "בסיסי", color: "bg-blue-100 text-blue-700", limit: "3 קמפיינים בחודש" },
+  pro: { name: "פרו", color: "bg-purple-100 text-purple-700", limit: "7 קמפיינים בחודש" },
+  business: { name: "עסקי", color: "bg-amber-100 text-amber-700", limit: "ללא הגבלה" },
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  ready: "מוכן",
+  published: "פורסם",
+  failed: "נכשל",
+  draft: "טיוטה",
+  processing: "בעיבוד",
 };
 
 export default async function DashboardPage() {
@@ -19,7 +27,6 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
-  // Fetch campaigns and subscription in parallel
   const [campaignsResult, subscriptionResult] = await Promise.all([
     supabase
       .from("campaigns")
@@ -37,7 +44,6 @@ export default async function DashboardPage() {
   const plan = subscription?.plan ?? "free";
   const planInfo = PLAN_LABELS[plan] ?? PLAN_LABELS.free;
 
-  // Count campaigns this month
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const monthlyCount =
@@ -45,7 +51,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface">
         <a href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -60,7 +65,7 @@ export default async function DashboardPage() {
             href="/gallery"
             className="text-sm text-muted hover:text-foreground transition-colors"
           >
-            Gallery
+            גלריה
           </a>
           <div className="flex items-center gap-3">
             {user.user_metadata.avatar_url && (
@@ -79,15 +84,13 @@ export default async function DashboardPage() {
         </div>
       </nav>
 
-      {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-12">
-        {/* Plan overview */}
         <div className="rounded-2xl border border-border bg-surface p-6 mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-foreground">
-                  Your Plan
+                  החבילה שלך
                 </h2>
                 <span
                   className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${planInfo.color}`}
@@ -98,7 +101,7 @@ export default async function DashboardPage() {
               <p className="text-sm text-muted">{planInfo.limit}</p>
               {plan !== "free" && plan !== "business" && (
                 <p className="text-sm text-muted">
-                  Used this month:{" "}
+                  ניצול החודש:{" "}
                   <span className="font-medium text-foreground">
                     {monthlyCount}
                   </span>{" "}
@@ -108,7 +111,7 @@ export default async function DashboardPage() {
               )}
               {plan === "business" && (
                 <p className="text-sm text-muted">
-                  Campaigns this month:{" "}
+                  קמפיינים החודש:{" "}
                   <span className="font-medium text-foreground">
                     {monthlyCount}
                   </span>
@@ -116,10 +119,10 @@ export default async function DashboardPage() {
               )}
               {subscription?.current_period_end && (
                 <p className="text-xs text-muted/60">
-                  Renews{" "}
+                  מתחדש בתאריך{" "}
                   {new Date(
                     subscription.current_period_end
-                  ).toLocaleDateString()}
+                  ).toLocaleDateString("he-IL")}
                 </p>
               )}
             </div>
@@ -128,34 +131,34 @@ export default async function DashboardPage() {
                 href="/pricing"
                 className="px-5 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl text-sm font-medium hover:shadow-lg transition-all shadow-md whitespace-nowrap"
               >
-                Upgrade Plan
+                שדרוג חבילה
               </a>
             ) : (
               <a
                 href="/pricing"
                 className="px-5 py-2.5 border border-border bg-surface text-foreground rounded-xl text-sm font-medium hover:bg-surface-hover transition-colors whitespace-nowrap"
               >
-                Manage Plan
+                ניהול חבילה
               </a>
             )}
           </div>
         </div>
 
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-foreground">My Campaigns</h1>
+          <h1 className="text-2xl font-bold text-foreground">הקמפיינים שלי</h1>
           <a
             href="/"
             className="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors"
           >
-            + New Campaign
+            + קמפיין חדש
           </a>
         </div>
 
         {!campaigns || campaigns.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-border rounded-2xl">
-            <p className="text-muted text-lg">No campaigns yet</p>
+            <p className="text-muted text-lg">עוד אין קמפיינים</p>
             <p className="text-muted/60 text-sm mt-1">
-              Create your first campaign by pasting a business URL
+              צרו את הקמפיין הראשון שלכם על ידי הדבקת קישור לעסק
             </p>
           </div>
         ) : (
@@ -167,7 +170,6 @@ export default async function DashboardPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 min-w-0">
-                    {/* Preview image thumbnail */}
                     {campaign.preview_image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -182,13 +184,13 @@ export default async function DashboardPage() {
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
                         {campaign.source_url && (
-                          <p className="text-sm text-muted truncate">
+                          <p className="text-sm text-muted truncate" dir="ltr">
                             {campaign.source_url}
                           </p>
                         )}
                         {campaign.is_public && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary-soft text-primary font-medium shrink-0">
-                            Public
+                            פומבי
                           </span>
                         )}
                       </div>
@@ -204,7 +206,7 @@ export default async function DashboardPage() {
                           : "bg-purple-100 text-purple-700"
                     }`}
                   >
-                    {campaign.status}
+                    {STATUS_LABELS[campaign.status] || campaign.status}
                   </span>
                 </div>
               </div>

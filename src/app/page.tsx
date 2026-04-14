@@ -6,51 +6,31 @@ import { createClient } from "@/lib/supabase/client";
 
 const FEATURES = [
   {
-    label: "Ad Copy",
-    description: "Headlines, body & CTAs",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-      </svg>
-    ),
+    label: "טקסטים למודעות",
+    description: "כותרות, גוף וקריאה לפעולה",
     color: "bg-primary-soft text-primary",
   },
   {
-    label: "A/B Variations",
-    description: "3 hooks per platform",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
+    label: "3 וריאציות A/B",
+    description: "לכל פלטפורמה",
     color: "bg-accent-soft text-accent",
   },
   {
-    label: "Persona",
-    description: "Deep audience profile",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
+    label: "פרסונת קהל יעד",
+    description: "ניתוח עמוק של הלקוח",
     color: "bg-success-soft text-success",
   },
   {
-    label: "Quality Scores",
-    description: "AI-rated per ad",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
+    label: "ציוני איכות",
+    description: "דירוג AI לכל מודעה",
     color: "bg-primary-soft text-primary",
   },
 ];
 
 const PLATFORMS = [
-  { label: "Facebook", icon: "f" },
-  { label: "Instagram", icon: "ig" },
-  { label: "LinkedIn", icon: "in" },
+  { label: "פייסבוק" },
+  { label: "אינסטגרם" },
+  { label: "לינקדאין" },
 ];
 
 type InputMode = "url" | "text";
@@ -100,25 +80,31 @@ export default function Home() {
             href="/gallery"
             className="text-sm text-muted hover:text-foreground transition-colors"
           >
-            Gallery
+            גלריה
           </a>
           <a
             href="/pricing"
             className="text-sm text-muted hover:text-foreground transition-colors"
           >
-            Pricing
+            מחירים
+          </a>
+          <a
+            href="/about"
+            className="text-sm text-muted hover:text-foreground transition-colors"
+          >
+            אודות
           </a>
           <button
             onClick={handleGoogleSignIn}
             className="text-sm text-muted hover:text-foreground transition-colors"
           >
-            Sign in
+            התחברות
           </button>
           <button
             onClick={handleGoogleSignIn}
             className="text-sm bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors shadow-sm"
           >
-            Get Started
+            יאללה, מתחילים
           </button>
         </div>
       </nav>
@@ -126,13 +112,11 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative overflow-hidden pt-20 pb-16 px-6">
-          {/* Background decoration */}
           <div className="absolute inset-0 -z-10">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-primary/5 via-accent/5 to-transparent rounded-full blur-3xl" />
           </div>
 
           <div className="max-w-2xl mx-auto text-center space-y-8">
-            {/* Social proof badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-success-soft border border-success/20 text-sm text-success">
               <span className="flex -space-x-1.5">
                 {[0, 1, 2].map((i) => (
@@ -142,34 +126,33 @@ export default function Home() {
                   />
                 ))}
               </span>
-              <span className="font-medium">200+ businesses already on board</span>
+              <span className="font-medium">יותר מ-200 עסקים ישראלים כבר איתנו</span>
             </div>
 
             <div className="space-y-4">
               <h1 className="text-5xl sm:text-6xl font-bold text-foreground tracking-tight leading-[1.1]">
                 {inputMode === "url" ? (
                   <>
-                    Paste a URL.
+                    הדביקו קישור.
                     <br />
                   </>
                 ) : (
                   <>
-                    Describe your business.
+                    ספרו על העסק.
                     <br />
                   </>
                 )}
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Get a full campaign.
+                  קבלו קמפיין מלא.
                 </span>
               </h1>
               <p className="text-lg text-muted max-w-md mx-auto leading-relaxed">
-                Kastly deep-scans your brand and creates premium ad copy with
-                A/B variations, audience personas, and quality scores — for
-                every channel.
+                Kastly סורקת לעומק את המותג שלכם ובונה קמפיין מקצועי עם
+                וריאציות A/B, פרסונה של קהל יעד וציוני איכות — לכל הערוצים,
+                בעברית.
               </p>
             </div>
 
-            {/* Input mode toggle */}
             <div className="flex items-center justify-center gap-1 p-1 rounded-xl bg-surface border border-border w-fit mx-auto">
               <button
                 onClick={() => setInputMode("url")}
@@ -179,7 +162,7 @@ export default function Home() {
                     : "text-muted hover:text-foreground"
                 }`}
               >
-                Paste URL
+                קישור לאתר
               </button>
               <button
                 onClick={() => setInputMode("text")}
@@ -189,25 +172,25 @@ export default function Home() {
                     : "text-muted hover:text-foreground"
                 }`}
               >
-                Describe in Text
+                תיאור בטקסט חופשי
               </button>
             </div>
 
-            {/* Input area */}
             {inputMode === "url" ? (
               <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
                 <input
                   type="url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://your-business.com"
-                  className="flex-1 px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm"
+                  placeholder="https://העסק-שלכם.co.il"
+                  dir="ltr"
+                  className="flex-1 px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm text-right"
                 />
                 <button
                   onClick={handleGenerate}
                   className="px-6 py-3.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-all whitespace-nowrap shadow-md hover:shadow-lg"
                 >
-                  Generate Campaign
+                  בנו לי קמפיין
                 </button>
               </div>
             ) : (
@@ -215,7 +198,7 @@ export default function Home() {
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. I'm a fitness trainer in Tel Aviv working with postpartum women. I offer personal training and online programs focused on core recovery and confidence building."
+                  placeholder="לדוגמה: אני מאמנת כושר בתל אביב, עובדת עם נשים אחרי לידה. מציעה אימונים אישיים ותוכניות אונליין לשיקום הליבה וחזרה לביטחון עצמי."
                   rows={4}
                   className="w-full px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm resize-none"
                 />
@@ -223,28 +206,25 @@ export default function Home() {
                   onClick={handleGenerate}
                   className="w-full px-6 py-3.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-all shadow-md hover:shadow-lg"
                 >
-                  Generate Campaign
+                  בנו לי קמפיין
                 </button>
               </div>
             )}
 
-            {/* Feature chips — enriched */}
             <div className="flex flex-wrap justify-center gap-2 pt-2">
               {FEATURES.map((f) => (
                 <span
                   key={f.label}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full font-medium ${f.color}`}
                 >
-                  {f.icon}
                   <span>{f.label}</span>
                   <span className="text-xs opacity-60">— {f.description}</span>
                 </span>
               ))}
             </div>
 
-            {/* Publish targets */}
             <div className="flex items-center justify-center gap-4 text-sm text-muted">
-              <span>Publishes to</span>
+              <span>פרסום ב-</span>
               <div className="flex gap-2">
                 {PLATFORMS.map((p) => (
                   <span
@@ -263,49 +243,34 @@ export default function Home() {
         <section className="py-20 px-6 bg-surface border-y border-border">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-center text-foreground mb-4">
-              How it works
+              איך זה עובד
             </h2>
             <p className="text-center text-muted mb-14 max-w-md mx-auto">
-              Three steps. One input. A full marketing campaign — live everywhere.
+              שלושה שלבים. קלט אחד. קמפיין שיווקי מלא — לייב בכל הערוצים.
             </p>
 
             <div className="grid md:grid-cols-3 gap-8">
               {[
                 {
                   step: "1",
-                  title: "Paste URL or describe",
+                  title: "מדביקים קישור או מתארים",
                   description:
-                    "Drop your website link or describe your business in free text. Kastly deep-scans multiple pages — homepage, about, products, and reviews.",
+                    "הדביקו את כתובת האתר או תארו את העסק בטקסט חופשי. Kastly סורקת לעומק כמה עמודים — ראשי, אודות, מוצרים, המלצות.",
                   gradient: "from-primary to-primary",
-                  icon: (
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.035a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.34 8.798" />
-                    </svg>
-                  ),
                 },
                 {
                   step: "2",
-                  title: "AI builds premium ads",
+                  title: "ה-AI בונה מודעות מנצחות",
                   description:
-                    "Persona profiling, 3 A/B variations per platform (pain, curiosity, numbers), quality-scored by AI before delivery.",
+                    "ניתוח פרסונה, 3 וריאציות A/B לכל פלטפורמה (כאב, סקרנות, מספרים), וציוני איכות לפני שמוציאים החוצה.",
                   gradient: "from-primary to-accent",
-                  icon: (
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-                    </svg>
-                  ),
                 },
                 {
                   step: "3",
-                  title: "Publish everywhere",
+                  title: "מפרסמים בכל הערוצים",
                   description:
-                    "One click sends your best-performing variation to Facebook, Instagram, LinkedIn — or all three at once.",
+                    "בלחיצה אחת — שולחים את הוריאציה המנצחת לפייסבוק, אינסטגרם ולינקדאין. או לכל שלושתם ביחד.",
                   gradient: "from-accent to-accent",
-                  icon: (
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                    </svg>
-                  ),
                 },
               ].map((item) => (
                 <div
@@ -313,12 +278,12 @@ export default function Home() {
                   className="relative text-center group"
                 >
                   <div
-                    className={`w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform`}
+                    className={`w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform font-bold text-xl`}
                   >
-                    {item.icon}
+                    {item.step}
                   </div>
                   <span className="text-xs font-semibold text-primary uppercase tracking-widest">
-                    Step {item.step}
+                    שלב {item.step}
                   </span>
                   <h3 className="text-lg font-semibold text-foreground mt-1 mb-2">
                     {item.title}
@@ -336,34 +301,31 @@ export default function Home() {
         <section className="py-20 px-6">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-3xl font-bold text-center text-foreground mb-4">
-              See what Kastly generates
+              מה Kastly יוצרת
             </h2>
             <p className="text-center text-muted mb-14 max-w-md mx-auto">
-              Real output from a single URL — persona, A/B variations, quality scores.
+              דוגמה אמיתית מקישור אחד — פרסונה, וריאציות A/B, ציוני איכות.
             </p>
 
             <div className="grid md:grid-cols-3 gap-6">
               {/* Ad Copy Card */}
               <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center">
-                    <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">3 Ad Variations</span>
+                  <span className="text-sm font-semibold text-foreground">3 וריאציות מודעה</span>
                 </div>
                 <div className="space-y-3 text-sm">
-                  {["Pain hook", "Curiosity hook", "Numbers hook"].map((hook, i) => (
-                    <div key={hook} className="p-3 rounded-lg bg-background">
+                  {[
+                    { hook: "וריאציית כאב", text: "הקפה שלך נטחן לפני 4 חודשים" },
+                    { hook: "וריאציית סקרנות", text: "למה ברמן מריח את השקית לפני הכול?" },
+                    { hook: "וריאציית מספרים", text: "2,847 ישראלים ויתרו על בית קפה החודש" },
+                  ].map((v, i) => (
+                    <div key={v.hook} className="p-3 rounded-lg bg-background">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs uppercase tracking-wide text-muted">{hook}</p>
+                        <p className="text-xs uppercase tracking-wide text-muted">{v.hook}</p>
                         <span className="text-[10px] font-bold text-primary bg-primary-soft px-1.5 py-0.5 rounded">{9 - i}/10</span>
                       </div>
-                      <p className="text-foreground font-semibold font-sans text-sm">
-                        {i === 0 && "Your Coffee Was Roasted 4 Months Ago"}
-                        {i === 1 && "Why Do Baristas Smell the Bag First?"}
-                        {i === 2 && "2,847 People Cancelled Their Café Orders"}
+                      <p className="text-foreground font-semibold text-sm">
+                        {v.text}
                       </p>
                     </div>
                   ))}
@@ -373,25 +335,20 @@ export default function Home() {
               {/* Persona Card */}
               <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-success-soft flex items-center justify-center">
-                    <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">Target Persona</span>
+                  <span className="text-sm font-semibold text-foreground">פרסונת יעד</span>
                 </div>
                 <div className="space-y-3 text-sm">
                   <div className="p-3 rounded-lg bg-background">
-                    <p className="text-xs uppercase tracking-wide text-muted mb-1">Age Range</p>
-                    <p className="text-foreground font-medium">28–42 years old</p>
+                    <p className="text-xs uppercase tracking-wide text-muted mb-1">טווח גילאים</p>
+                    <p className="text-foreground font-medium">28–42</p>
                   </div>
                   <div className="p-3 rounded-lg bg-background">
-                    <p className="text-xs uppercase tracking-wide text-muted mb-1">Top Pain Point</p>
-                    <p className="text-foreground font-medium">Stale supermarket coffee</p>
+                    <p className="text-xs uppercase tracking-wide text-muted mb-1">נקודת כאב עיקרית</p>
+                    <p className="text-foreground font-medium">קפה בסופר שאיבד את הטעם</p>
                   </div>
                   <div className="p-3 rounded-lg bg-background">
-                    <p className="text-xs uppercase tracking-wide text-muted mb-1">Scroll Stopper</p>
-                    <p className="text-foreground font-medium">Side-by-side freshness comparison</p>
+                    <p className="text-xs uppercase tracking-wide text-muted mb-1">עוצר גלילה</p>
+                    <p className="text-foreground font-medium">השוואה צד-לצד של טריות</p>
                   </div>
                 </div>
               </div>
@@ -399,19 +356,14 @@ export default function Home() {
               {/* Score Card */}
               <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-accent-soft flex items-center justify-center">
-                    <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">Quality Scores</span>
+                  <span className="text-sm font-semibold text-foreground">ציוני איכות</span>
                 </div>
                 <div className="space-y-3 text-sm">
                   {[
-                    { label: "Hook Strength", score: 9 },
-                    { label: "Message Clarity", score: 9 },
-                    { label: "CTA Effectiveness", score: 8 },
-                    { label: "Platform Fit", score: 9 },
+                    { label: "עוצמת הוק", score: 9 },
+                    { label: "בהירות מסר", score: 9 },
+                    { label: "אפקטיביות CTA", score: 8 },
+                    { label: "התאמה לפלטפורמה", score: 9 },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center justify-between p-3 rounded-lg bg-background">
                       <span className="text-muted">{item.label}</span>
@@ -436,10 +388,11 @@ export default function Home() {
         <section className="py-20 px-6 bg-gradient-to-b from-primary-soft/50 to-background">
           <div className="max-w-lg mx-auto text-center space-y-6">
             <h2 className="text-3xl font-bold text-foreground">
-              Ready to launch your campaign?
+              מוכנים להריץ את הקמפיין הבא?
             </h2>
             <p className="text-muted">
-              Join 200+ businesses using Kastly to market smarter. Start free — no credit card needed.
+              הצטרפו ל-200+ עסקים ישראלים שעושים שיווק חכם יותר עם Kastly.
+              מתחילים בחינם — בלי אשראי.
             </p>
             <button
               onClick={handleGoogleSignIn}
@@ -464,7 +417,7 @@ export default function Home() {
                 />
               </svg>
               <span className="text-sm font-medium text-foreground">
-                Continue with Google
+                התחברות עם Google
               </span>
             </button>
           </div>
@@ -473,7 +426,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="py-6 text-center text-sm text-muted border-t border-border">
-        Kastly &copy; {new Date().getFullYear()}
+        Kastly &copy; {new Date().getFullYear()} — נבנה בישראל באהבה
       </footer>
     </div>
   );

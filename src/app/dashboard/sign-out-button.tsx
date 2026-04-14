@@ -18,7 +18,7 @@ export function SignOutButton() {
       onClick={handleSignOut}
       className="text-sm text-muted hover:text-foreground transition-colors"
     >
-      Sign out
+      התנתקות
     </button>
   );
 }
