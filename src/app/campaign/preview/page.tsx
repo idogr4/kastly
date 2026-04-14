@@ -513,47 +513,62 @@ function ResultsView({
     }
 
     const platformKeys = ["facebook", "instagram", "linkedin"] as const;
-    platformKeys.forEach(async (platform) => {
-      const prompt = campaign.image_prompts?.[platform];
-      if (!prompt) {
-        setPlatformImages((prev) => ({
-          ...prev,
-          [platform]: { url: null, loading: false },
-        }));
-        return;
-      }
+    let cancelled = false;
 
-      try {
-        const res = await fetch("/api/campaigns/images", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt,
-            platform,
-            brand_profile: campaign.brand_profile,
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
+    // Serialize requests to avoid hitting Replicate's per-model concurrency
+    // limit; each image ~8s so total ~24s, which keeps well under route
+    // max duration.
+    (async () => {
+      for (const platform of platformKeys) {
+        if (cancelled) return;
+        const prompt = campaign.image_prompts?.[platform];
+        if (!prompt) {
           setPlatformImages((prev) => ({
             ...prev,
-            [platform]: { url: data.image_url, loading: false },
+            [platform]: { url: null, loading: false },
           }));
-        } else {
+          continue;
+        }
+
+        try {
+          const res = await fetch("/api/campaigns/images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt,
+              platform,
+              brand_profile: campaign.brand_profile,
+            }),
+          });
+
+          if (cancelled) return;
+
+          if (res.ok) {
+            const data = await res.json();
+            setPlatformImages((prev) => ({
+              ...prev,
+              [platform]: { url: data.image_url, loading: false },
+            }));
+          } else {
+            setPlatformImages((prev) => ({
+              ...prev,
+              [platform]: { url: null, loading: false },
+            }));
+          }
+        } catch {
+          if (cancelled) return;
           setPlatformImages((prev) => ({
             ...prev,
             [platform]: { url: null, loading: false },
           }));
         }
-      } catch {
-        setPlatformImages((prev) => ({
-          ...prev,
-          [platform]: { url: null, loading: false },
-        }));
       }
-    });
-  }, [campaign.image_prompts]);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [campaign.image_prompts, campaign.brand_profile]);
 
   const platforms = [
     { key: "facebook", color: "bg-blue-500", data: campaign.facebook },

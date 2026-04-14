@@ -112,17 +112,19 @@ export async function POST(request: NextRequest) {
 
     const finalPrompt = enhancePrompt(prompt, brand_profile || null);
 
-    const output = await replicate.run("black-forest-labs/flux-1.1-pro", {
-      input: {
-        prompt: finalPrompt,
-        width: dimensions.width,
-        height: dimensions.height,
-        output_format: "webp",
-        output_quality: 92,
-        safety_tolerance: 2,
-        prompt_upsampling: true,
-      },
-    });
+    const output = await runWithRetry(async () =>
+      replicate.run("black-forest-labs/flux-1.1-pro", {
+        input: {
+          prompt: finalPrompt,
+          width: dimensions.width,
+          height: dimensions.height,
+          output_format: "webp",
+          output_quality: 92,
+          safety_tolerance: 2,
+          prompt_upsampling: true,
+        },
+      })
+    );
 
     let imageUrl: string;
     if (typeof output === "string") {
@@ -141,9 +143,56 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error(`Image generation error (${platform}):`, error);
-    return NextResponse.json(
-      { error: "Failed to generate image. Please try again." },
-      { status: 500 }
-    );
+    const status = extractStatus(error);
+    const message =
+      status === 429
+        ? "ה-AI של התמונות עסוק כרגע. נסו שוב בעוד רגע."
+        : "Failed to generate image. Please try again.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+// --- Retry helper: exponential backoff on 429 / 503 ---
+
+function extractStatus(err: unknown): number | null {
+  if (!err || typeof err !== "object") return null;
+  const anyErr = err as { status?: number; response?: { status?: number } };
+  if (typeof anyErr.status === "number") return anyErr.status;
+  if (anyErr.response && typeof anyErr.response.status === "number") {
+    return anyErr.response.status;
+  }
+  // Fallback: parse from message "... failed with status 429 ..."
+  const msg = (err as { message?: string }).message ?? "";
+  const m = /status\s+(\d{3})/.exec(msg);
+  return m ? Number(m[1]) : null;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runWithRetry<T>(fn: () => Promise<T>, maxAttempts = 4): Promise<T> {
+  let attempt = 0;
+  let lastErr: unknown;
+  while (attempt < maxAttempts) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const status = extractStatus(err);
+      const retryable = status === 429 || status === 503 || status === 502;
+      if (!retryable) throw err;
+      attempt++;
+      if (attempt >= maxAttempts) break;
+      // Exponential backoff with jitter: 1.5s, 3s, 6s (+ up to 500ms jitter)
+      const base = 1500 * Math.pow(2, attempt - 1);
+      const jitter = Math.floor(Math.random() * 500);
+      const wait = base + jitter;
+      console.warn(
+        `Replicate ${status} — retry ${attempt}/${maxAttempts - 1} after ${wait}ms`
+      );
+      await sleep(wait);
+    }
+  }
+  throw lastErr;
 }
