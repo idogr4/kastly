@@ -39,9 +39,34 @@ interface StorySlide {
   visual_prompt?: string;
 }
 
+interface BrandColors {
+  primary?: string;
+  secondary?: string;
+  accent?: string;
+  background?: string;
+  text?: string;
+}
+
+interface BrandProfile {
+  category?: string;
+  tone?: string;
+  colors?: BrandColors;
+  font_style?: string;
+  audience?: {
+    age?: string;
+    gender?: string;
+    interests?: string[];
+  };
+  core_message?: string;
+  differentiation?: string;
+  pain_solved?: string;
+  music_mood?: string;
+}
+
 interface Campaign {
   business_name: string;
   business_description: string;
+  brand_profile?: BrandProfile;
   persona: Persona;
   facebook: AdVariation[];
   instagram: AdVariation[];
@@ -502,7 +527,11 @@ function ResultsView({
         const res = await fetch("/api/campaigns/images", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt, platform }),
+          body: JSON.stringify({
+            prompt,
+            platform,
+            brand_profile: campaign.brand_profile,
+          }),
         });
 
         if (res.ok) {
@@ -914,6 +943,7 @@ function ResultsView({
                     slide={s}
                     business={campaign.business_name}
                     isFreePlan={isFreePlan}
+                    brand={campaign.brand_profile}
                   />
                 ))}
               </div>
@@ -1067,14 +1097,6 @@ function ResultsView({
 
 /* ---------- Story Card ---------- */
 
-const STORY_GRADIENTS = [
-  "from-purple-500 via-pink-500 to-orange-400",
-  "from-blue-500 via-purple-500 to-pink-500",
-  "from-emerald-500 via-teal-500 to-cyan-500",
-  "from-amber-500 via-orange-500 to-red-500",
-  "from-indigo-600 via-purple-600 to-pink-600",
-];
-
 const STORY_ROLE_LABELS: Record<string, string> = {
   hook: "פתיח",
   problem: "בעיה",
@@ -1087,13 +1109,30 @@ function StoryCard({
   slide,
   business,
   isFreePlan,
+  brand,
 }: {
   slide: StorySlide;
   business: string;
   isFreePlan: boolean;
+  brand?: BrandProfile;
 }) {
-  const gradient = STORY_GRADIENTS[(slide.slide - 1) % STORY_GRADIENTS.length];
   const roleLabel = STORY_ROLE_LABELS[slide.role] || slide.role;
+
+  // Derive 3-stop gradient from brand colors, with per-slide variation.
+  const brandPrimary = brand?.colors?.primary || "#6c5ce7";
+  const brandSecondary = brand?.colors?.secondary || "#fd79a8";
+  const brandAccent = brand?.colors?.accent || "#ffd43b";
+  const brandText = brand?.colors?.text || "#ffffff";
+
+  const variations: Array<[string, string, string]> = [
+    [brandPrimary, brandSecondary, brandAccent],
+    [brandSecondary, brandAccent, brandPrimary],
+    [brandAccent, brandPrimary, brandSecondary],
+    [brandPrimary, brandAccent, brandSecondary],
+    [brandSecondary, brandPrimary, brandAccent],
+  ];
+  const [c1, c2, c3] = variations[(slide.slide - 1) % variations.length];
+  const gradientCss = `linear-gradient(135deg, ${c1}, ${c2} 50%, ${c3})`;
 
   async function handleDownload() {
     // Render the story slide to a canvas at 1080x1920 and download
@@ -1103,14 +1142,6 @@ function StoryCard({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const grads: Record<string, string[]> = {
-      "from-purple-500 via-pink-500 to-orange-400": ["#a855f7", "#ec4899", "#fb923c"],
-      "from-blue-500 via-purple-500 to-pink-500": ["#3b82f6", "#a855f7", "#ec4899"],
-      "from-emerald-500 via-teal-500 to-cyan-500": ["#10b981", "#14b8a6", "#06b6d4"],
-      "from-amber-500 via-orange-500 to-red-500": ["#f59e0b", "#f97316", "#ef4444"],
-      "from-indigo-600 via-purple-600 to-pink-600": ["#4f46e5", "#9333ea", "#db2777"],
-    };
-    const [c1, c2, c3] = grads[gradient] || ["#6c5ce7", "#fd79a8", "#6c5ce7"];
     const lg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
     lg.addColorStop(0, c1);
     lg.addColorStop(0.5, c2);
@@ -1186,7 +1217,8 @@ function StoryCard({
   return (
     <div className="shrink-0 snap-start w-[220px] space-y-3">
       <div
-        className={`relative aspect-[9/16] rounded-2xl overflow-hidden bg-gradient-to-br ${gradient} shadow-md`}
+        className="relative aspect-[9/16] rounded-2xl overflow-hidden shadow-md"
+        style={{ background: gradientCss }}
       >
         <div className="absolute inset-0 bg-black/25" />
         <div className="absolute inset-0 p-4 flex flex-col">
@@ -1194,14 +1226,22 @@ function StoryCard({
             שקף {slide.slide} • {roleLabel}
           </div>
           <div className="flex-1 flex flex-col justify-center text-center">
-            <p className="text-white font-bold text-lg leading-tight mb-2">
+            <p
+              className="font-bold text-lg leading-tight mb-2"
+              style={{ color: brandText }}
+            >
               {slide.title}
             </p>
-            <p className="text-white/90 text-xs leading-snug">{slide.body}</p>
+            <p className="text-xs leading-snug" style={{ color: brandText, opacity: 0.92 }}>
+              {slide.body}
+            </p>
           </div>
           {slide.cta && (
             <div className="text-center">
-              <span className="inline-block bg-white text-foreground text-[11px] font-bold px-3 py-1.5 rounded-full">
+              <span
+                className="inline-block text-[11px] font-bold px-3 py-1.5 rounded-full"
+                style={{ background: "#ffffff", color: brandPrimary }}
+              >
                 {slide.cta}
               </span>
             </div>
@@ -1550,8 +1590,10 @@ function VideoSection({
           headline: bestAd.headline,
           body: bestAd.body,
           cta: bestAd.cta,
+          features: campaign.landing_page?.features || [],
           images: imgs,
           plan,
+          brand_profile: campaign.brand_profile,
         }),
       });
 

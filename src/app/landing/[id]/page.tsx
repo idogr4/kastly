@@ -21,6 +21,7 @@ export default async function PublicLandingPage({
   }
 
   const lp = campaign.campaign_data.landing_page;
+  const brand = campaign.campaign_data.brand_profile || null;
 
   return (
     <LandingClient
@@ -30,6 +31,7 @@ export default async function PublicLandingPage({
       subheadline={lp.hero_subheadline}
       features={lp.features || []}
       cta={lp.cta}
+      brand={brand}
     />
   );
 }

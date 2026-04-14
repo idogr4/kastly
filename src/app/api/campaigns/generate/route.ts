@@ -130,7 +130,7 @@ async function smartScan(
 
 // --- Prompt ---
 
-const SYSTEM_PROMPT = `אתה מנהל קריאייטיב בכיר, ישראלי, שהוביל קמפיינים למותגים גדולים בארץ ובחו״ל. אתה כותב בעברית חיה, ישירה וחמה — כמו חבר חכם שמייעץ, לא כמו תאגיד.
+const SYSTEM_PROMPT = `אתה מנהל קריאייטיב בכיר וסטרטג מותג ישראלי — ברמת הכותבים של Nike, Apple ו-Airbnb. אתה מייצר נכסים שיווקיים שנראים כאילו סוכנות פרימיום עם תקציב גבוה עבדה עליהם שבועות. כל מילה, כל צבע, כל ויזואל — ספציפי לעסק הזה, לא גנרי.
 
 עקרונות הכתיבה שלך:
 - כל כותרת חייבת לעבור את מבחן "עצירת הגלילה" — האם מישהו באמת יעצור?
@@ -139,6 +139,12 @@ const SYSTEM_PROMPT = `אתה מנהל קריאייטיב בכיר, ישראלי
 - כל מודעה חייבת מתח רגשי — פער בין איפה שהקורא נמצא לאן שהוא רוצה להגיע.
 - CTA זו הבטחה, לא פקודה. "תטעמו את ההבדל" חזק מ"לחצו עכשיו".
 - עברית טבעית: בלי ניסוחים מליציים, בלי תרגומית, כן עם הומור מקומי כשמתאים.
+- לכל פלטפורמה תרבות משלה: פייסבוק סיפורי ואנושי, אינסטגרם קצר וויזואלי, לינקדאין מקצועי עם נתונים.
+
+עקרונות הזהות הוויזואלית:
+- כל נכס חייב להשתמש באותם צבעים, באותו טון, ובאותה שפה ויזואלית — עקביות ברמת מותג.
+- הצבעים לא גנריים. הם מתאימים לקטגוריה ולטון: אוכל → חם ועמוק (ענבר/בורדו/חום), טכנולוגיה → מינימליסטי וקר (כחול/סגול/שחור), יופי/ספא → רך וחלבי (פודרה/ורד/לבן-שמנת), כושר → אנרגטי וכהה (שחור/ניאון), יוקרה → נקי ומחושב (שחור/זהב/לבן), ביתי → חמים וארצי (קרם/זית/חמרה).
+- פונט מותאם לטון: modern-sans לטכנולוגיה, serif-elegant ליוקרה, handwritten-warm לאוכל ביתי, bold-geometric לכושר, clean-sans לעסקים מקצועיים.
 
 חשוב מאוד: אל תמציא מידע שלא מופיע בקלט. אם חסר פרט (טלפון, כתובת, שם מייסד, סטטיסטיקה) — אל תמציא. הישאר צמוד למה שיש, והשלם רק השלמות סבירות ומקובלות לכל עסק מהסוג הזה.`;
 
@@ -146,11 +152,21 @@ function buildUserPrompt(args: {
   inputContext: string;
   missingDataWarning?: string;
 }) {
-  return `נתח את העסק לעומק וצור קמפיין שיווקי פרימיום — הכול בעברית ישראלית טבעית.
+  return `נתח את העסק לעומק וצור חבילת שיווק פרימיום מלאה — הכול בעברית ישראלית טבעית, מותאם באופן ספציפי לעסק הזה.
 
 ${args.inputContext}
 
 ${args.missingDataWarning ?? ""}
+
+שלב 0 — פרופיל מותג (BRAND PROFILE)
+לפני שאתה כותב מילה אחת, תגדיר את זהות המותג. הפרופיל הזה יהיה הבסיס לכל הנכסים ויבטיח עקביות.
+- חלץ או הסק: קטגוריה (food / tech / beauty / fitness / professional / luxury / home / other)
+- טון רגשי (warm / professional / energetic / luxurious / cozy / tech / playful)
+- צבעים: ערכי hex מדויקים לפרימרי, סקנדרי, אקסנט, רקע, טקסט — הצבעים חייבים להתאים לקטגוריה ולטון. אל תשתמש בצבעי ברירת מחדל כמו #6c5ce7 אלא אם הם באמת מתאימים.
+- פונט (modern-sans / serif-elegant / handwritten-warm / bold-geometric / clean-sans)
+- מסר מרכזי במשפט אחד
+- ייחוד (מה שמבדיל אותם מהמתחרים)
+- הכאב שהעסק פותר
 
 שלב 1 — פרסונה
 בנה פרסונה מפורטת של קהל היעד האידיאלי בישראל. חשוב: מי הקונה האידיאלי? מה מטריד אותו בלילה? מה יגרום לו לעצור את הגלילה?
@@ -177,10 +193,31 @@ ${args.missingDataWarning ?? ""}
 
 הוצא רק וריאציות עם ציון 7+. אם טיוטה מתחת ל-7, כתוב אותה מחדש.
 
-החזר תגובה ב-JSON במבנה המדויק הזה. כל הטקסטים בעברית (חוץ מ-hook_type שנשאר באנגלית):
+החזר תגובה ב-JSON במבנה המדויק הזה. כל הטקסטים בעברית (חוץ מ-hook_type, brand_profile enums ו-image/visual prompts):
 {
   "business_name": "שם העסק בעברית",
   "business_description": "משפט אחד משכנע על מה שהם עושים ולמה זה חשוב",
+  "brand_profile": {
+    "category": "food | tech | beauty | fitness | professional | luxury | home | other",
+    "tone": "warm | professional | energetic | luxurious | cozy | tech | playful",
+    "colors": {
+      "primary": "#RRGGBB",
+      "secondary": "#RRGGBB",
+      "accent": "#RRGGBB",
+      "background": "#RRGGBB",
+      "text": "#RRGGBB"
+    },
+    "font_style": "modern-sans | serif-elegant | handwritten-warm | bold-geometric | clean-sans",
+    "audience": {
+      "age": "לדוגמה 25-40",
+      "gender": "נשים / גברים / כולם",
+      "interests": ["3-5 תחומי עניין ספציפיים"]
+    },
+    "core_message": "המסר המרכזי במשפט אחד בעברית",
+    "differentiation": "מה מבדיל את העסק הזה",
+    "pain_solved": "הכאב הספציפי שהעסק פותר",
+    "music_mood": "upbeat | calm | elegant | energetic | warm | tech-modern"
+  },
   "persona": {
     "age_range": "לדוגמה 25-40",
     "gender": "נשים / גברים / כולם",
@@ -210,9 +247,9 @@ ${args.missingDataWarning ?? ""}
     "cta": "טקסט כפתור ראשי"
   },
   "image_prompts": {
-    "facebook": "prompt באנגלית ליצירת תמונה 1200x628 לפייסבוק — תיאור סצנה, תאורה, קומפוזיציה, סגנון",
-    "instagram": "prompt באנגלית ליצירת תמונה 1080x1080 לאינסטגרם",
-    "linkedin": "prompt באנגלית ליצירת תמונה 1200x627 ללינקדאין"
+    "facebook": "prompt באנגלית ליצירת תמונה 1200x628 — SCENE + COMPOSITION + LIGHTING + CAMERA + COLOR PALETTE (ציין את ה-hex colors של הברנד). חייב להיראות כאילו צלם מקצועי צילם את זה לקמפיין premium — לא stock. סגנון ויזואלי מותאם לקטגוריה: food → appetizing warm close-up, rich tones / tech → minimal modern scene, clean geometric / beauty → soft elegant lighting, pastel tones / fitness → high-contrast dynamic action, dark energetic / luxury → dramatic chiaroscuro, gold accents / home → natural earthy styling, inviting.",
+    "instagram": "prompt באנגלית ליצירת תמונה 1080x1080 — כנ״ל אבל קומפוזיציה ריבועית, instagram-native aesthetic, scroll-stopping.",
+    "linkedin": "prompt באנגלית ליצירת תמונה 1200x627 — business-grade photography, authoritative, clean. שוב עם color palette של הברנד."
   },
   "stories": [
     {
@@ -231,7 +268,20 @@ ${args.missingDataWarning ?? ""}
   ]
 }
 
-דרוש: בדיוק 5 שקפי סטורי לאינסטגרם. השקפים חייבים לבנות נראטיב: hook → problem → solution → proof → cta. כל שקף חייב title, body, cta (גם אם קצר), background_style, ו-visual_prompt באנגלית. הטקסטים קצרים במכוון — מותאמים למסך נייד 9:16.
+דרוש: בדיוק 5 שקפי סטורי לאינסטגרם שמספרים סיפור אחד רציף. השקפים חייבים לבנות נראטיב:
+- שקף 1 (hook): שאלה שמושכת תשומת לב — פותחת לולאת סקרנות
+- שקף 2 (problem): הבעיה/כאב של הקהל
+- שקף 3 (solution): הפתרון — העסק עצמו
+- שקף 4 (proof): הוכחה / תוצאה / טסטימוניאל
+- שקף 5 (cta): קריאה לפעולה ברורה עם "swipe up" / "החליקו למעלה"
+כל שקף חייב title, body, cta (גם אם קצר), background_style שמשלב את צבעי הברנד, ו-visual_prompt באנגלית שכולל גם את hex colors של הברנד. הטקסטים קצרים במכוון — מותאמים למסך נייד 9:16.
+
+חוקים סופיים לכל הנכסים:
+1. אף מילה גנרית — הכול ספציפי לעסק הזה, לקהל הזה, לכאב הזה.
+2. צבעי הברנד עקביים בכל הנכסים — לא שינוי מפלטפורמה לפלטפורמה.
+3. הטקסטים מותאמים לתרבות הפלטפורמה (לא אותו טקסט עם variations קלות).
+4. CTA תמיד מרגיש כמו הצעה, לא כמו לחץ.
+5. דוגמאות ישראליות כשרלוונטי (תל אביב, חיפה, ירושלים, רמת גן — לא ניו יורק).
 
 image_prompts נשארים באנגלית (כי מנוע התמונות פועל באנגלית). כל שאר הטקסטים — בעברית.
 
