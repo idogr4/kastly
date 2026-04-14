@@ -1691,24 +1691,24 @@ function VideoSection({
                 הפכו את הקמפיין לסרטון
               </h3>
               <p className="text-sm text-muted leading-relaxed">
-                Kastly מייצרת אוטומטית סרטון 30 שניות מהקמפיין — כותרת, תיאור
-                ו-CTA עם אנימציות — מוכן להעלאה לרילס, סטוריז, טיקטוק או יוטיוב
-                שורטס.
+                Kastly מייצרת אוטומטית סרטון אנכי של 30 שניות מהקמפיין —
+                כותרת, תיאור, CTA + קריינות AI בעברית — מוכן להעלאה לרילס,
+                סטוריז, טיקטוק או יוטיוב שורטס.
               </p>
             </div>
 
             <ul className="space-y-1.5 text-sm text-foreground">
               <li className="flex items-start gap-2">
                 <span className="text-success mt-1">•</span>
-                כותרת וגוף מונפשים מתוך המודעה הטובה ביותר
+                קריינות AI בעברית (קול נשי נוירלי)
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-success mt-1">•</span>
-                תמונות ה-AI מהקמפיין, עם אפקט kens-burns
+                כותרת, תיאור ו-CTA מונפשים עם תמונות מהקמפיין
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-success mt-1">•</span>
-                CTA גדול בסיום בגוון מבדיל
+                אפקטי zoom-in/zoom-out על התמונות
               </li>
               {isFreePlan && (
                 <li className="flex items-start gap-2 text-muted">
