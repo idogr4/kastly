@@ -5,25 +5,50 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const FEATURES = [
+  { label: "טקסטים למודעות", description: "פייסבוק, אינסטגרם, לינקדאין", color: "bg-primary-soft text-primary" },
+  { label: "תמונות AI", description: "מותאמות לכל פלטפורמה", color: "bg-accent-soft text-accent" },
+  { label: "סרטון פרסומת", description: "30 שניות עם קריינות בעברית", color: "bg-success-soft text-success" },
+  { label: "דף נחיתה חי", description: "עם לכידת לידים", color: "bg-primary-soft text-primary" },
+  { label: "5 שקפי Story", description: "מוכנים לאינסטגרם", color: "bg-accent-soft text-accent" },
+  { label: "פרסונת קהל", description: "ניתוח מעמיק", color: "bg-success-soft text-success" },
+];
+
+const DEEP_FEATURES = [
   {
-    label: "טקסטים למודעות",
-    description: "כותרות, גוף וקריאה לפעולה",
-    color: "bg-primary-soft text-primary",
+    title: "טקסטים שיווקיים",
+    description:
+      "3 וריאציות A/B לכל פלטפורמה (פייסבוק, אינסטגרם, לינקדאין) — כל אחת עם כותרת, גוף ו-CTA, מדורגות לפי ציוני איכות של ה-AI.",
+    icon: "📝",
   },
   {
-    label: "3 וריאציות A/B",
-    description: "לכל פלטפורמה",
-    color: "bg-accent-soft text-accent",
+    title: "תמונות מותאמות",
+    description:
+      "תמונות שיווקיות באיכות גבוהה מ-Flux Pro — בגדלים הנכונים לכל רשת (1200x628 לפייסבוק, 1080x1080 לאינסטגרם, 1200x627 ללינקדאין).",
+    icon: "🎨",
   },
   {
-    label: "פרסונת קהל יעד",
-    description: "ניתוח עמוק של הלקוח",
-    color: "bg-success-soft text-success",
+    title: "סרטון פרסומת עם קריינות",
+    description:
+      "MP4 אנכי של 30 שניות — כותרת, תיאור ו-CTA, עם קריינות AI בעברית (קול נוירלי), מוכן להעלאה לרילס, סטוריז וטיקטוק.",
+    icon: "🎬",
   },
   {
-    label: "ציוני איכות",
-    description: "דירוג AI לכל מודעה",
-    color: "bg-primary-soft text-primary",
+    title: "דף נחיתה חי",
+    description:
+      "לא רק טיוטה — דף נחיתה ציבורי פעיל לכל קמפיין, עם טופס לכידת לידים, מעקב אחרי כניסות ולחיצות, וייצוא CSV של כל המיילים.",
+    icon: "🌐",
+  },
+  {
+    title: "Stories לאינסטגרם",
+    description:
+      "5 שקפים בנרטיב בנוי (פתיח → בעיה → פתרון → הוכחה → CTA), מותאמים 1080x1920, כולל הורדה כ-PNG או העתקת טקסט.",
+    icon: "📱",
+  },
+  {
+    title: "עוזר AI לשיפור",
+    description:
+      "צ'אטבוט בעברית שזוכר את כל הקמפיין. בקשו ממנו לקצר, לשנות טון, לחזק CTA או להתאים לקהל אחר — והוא מעדכן הכול בזמן אמת.",
+    icon: "💬",
   },
 ];
 
@@ -146,10 +171,10 @@ export default function Home() {
                   קבלו קמפיין מלא.
                 </span>
               </h1>
-              <p className="text-lg text-muted max-w-md mx-auto leading-relaxed">
-                Kastly סורקת לעומק את המותג שלכם ובונה קמפיין מקצועי עם
-                וריאציות A/B, פרסונה של קהל יעד וציוני איכות — לכל הערוצים,
-                בעברית.
+              <p className="text-lg text-muted max-w-xl mx-auto leading-relaxed">
+                קמפיין שלם בלחיצה אחת — טקסטים ל-3 רשתות, תמונות AI, סרטון
+                פרסומת עם קריינות בעברית, Stories לאינסטגרם ודף נחיתה חי
+                ללכידת לידים. הכול מותאם לקהל הישראלי.
               </p>
             </div>
 
@@ -293,6 +318,44 @@ export default function Home() {
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* What you get */}
+        <section className="py-20 px-6">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-3xl font-bold text-center text-foreground mb-4">
+              מה מקבלים בכל קמפיין
+            </h2>
+            <p className="text-center text-muted mb-14 max-w-lg mx-auto">
+              לא עוד כלי שמייצר "פוסט" או "באנר". Kastly מוציאה חבילה
+              שיווקית מלאה — הכול ברמת פריסה, לא סקיצה.
+            </p>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {DEEP_FEATURES.map((f) => (
+                <div
+                  key={f.title}
+                  className="rounded-2xl border border-border bg-surface p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="text-3xl mb-3">{f.icon}</div>
+                  <h3 className="text-base font-semibold text-foreground mb-1.5">
+                    {f.title}
+                  </h3>
+                  <p className="text-sm text-muted leading-relaxed">
+                    {f.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/5 to-primary/10 p-6 text-center">
+              <p className="text-sm text-foreground leading-relaxed max-w-2xl mx-auto">
+                <strong>הכול בעברית, מותאם לקהל ישראלי</strong> — דוגמאות
+                מקומיות, טון ישיר וחם, דרישות העברית ב-RTL, מחירים בשקלים,
+                ותאריכים בפורמט ישראלי.
+              </p>
             </div>
           </div>
         </section>
