@@ -276,30 +276,7 @@ ${args.missingDataWarning ?? ""}
     "instagram": "prompt באנגלית ליצירת תמונה 1080x1080 — כנ״ל אבל קומפוזיציה ריבועית, instagram-native aesthetic, scroll-stopping.",
     "linkedin": "prompt באנגלית ליצירת תמונה 1200x627 — business-grade photography, authoritative, clean. שוב עם color palette של הברנד."
   },
-  "stories": [
-    {
-      "slide": 1,
-      "role": "hook",
-      "title": "כותרת קצרה שעוצרת גלילה (עד 6 מילים)",
-      "body": "משפט קצר בגוף הסטורי (עד 15 מילים)",
-      "cta": "טקסט קצר לסטיקר או כפתור (2-4 מילים)",
-      "background_style": "תיאור קצר של הרקע המומלץ (צבע/מרקם/אמוציה)",
-      "visual_prompt": "prompt באנגלית ליצירת תמונה 1080x1920 (9:16) — ויזואל אנכי, ללא טקסט"
-    },
-    { "slide": 2, "role": "problem", ... },
-    { "slide": 3, "role": "solution", ... },
-    { "slide": 4, "role": "proof", ... },
-    { "slide": 5, "role": "cta", ... }
-  ]
 }
-
-דרוש: בדיוק 5 שקפי סטורי לאינסטגרם שמספרים סיפור אחד רציף. השקפים חייבים לבנות נראטיב:
-- שקף 1 (hook): שאלה שמושכת תשומת לב — פותחת לולאת סקרנות
-- שקף 2 (problem): הבעיה/כאב של הקהל
-- שקף 3 (solution): הפתרון — העסק עצמו
-- שקף 4 (proof): הוכחה / תוצאה / טסטימוניאל
-- שקף 5 (cta): קריאה לפעולה ברורה עם "swipe up" / "החליקו למעלה"
-כל שקף חייב title, body, cta (גם אם קצר), background_style שמשלב את צבעי הברנד, ו-visual_prompt באנגלית שכולל גם את hex colors של הברנד. הטקסטים קצרים במכוון — מותאמים למסך נייד 9:16.
 
 חוקים סופיים לכל הנכסים:
 1. אף מילה גנרית — הכול ספציפי לעסק הזה, לקהל הזה, לכאב הזה.
@@ -442,7 +419,7 @@ ${description}
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 8000,
+      max_tokens: 6000,
       system: SYSTEM_PROMPT,
       messages: [
         {

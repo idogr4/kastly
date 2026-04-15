@@ -502,6 +502,43 @@ function ResultsView({
     linkedin: { url: null, loading: true },
   });
 
+  // Fire a second, smaller Claude call to generate Stories — kept separate
+  // from the main generate endpoint so both stay under Vercel's 60s cap.
+  useEffect(() => {
+    if (!campaign.business_name) return;
+    if (campaign.stories && campaign.stories.length > 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/campaigns/stories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            business_name: campaign.business_name,
+            business_description: campaign.business_description,
+            persona: campaign.persona,
+            brand_profile: campaign.brand_profile,
+          }),
+        });
+        if (cancelled) return;
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (Array.isArray(data.stories) && data.stories.length > 0) {
+          setCampaign((prev) => ({ ...prev, stories: data.stories }));
+        }
+      } catch {
+        // silent — stories are secondary content
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaign.business_name]);
+
   useEffect(() => {
     if (!campaign.image_prompts) {
       setPlatformImages({
@@ -941,41 +978,59 @@ function ResultsView({
         </div>
 
         {/* Instagram Stories */}
-        {campaign.stories && campaign.stories.length > 0 && (
-          <div className="mt-8 rounded-2xl border border-border bg-surface overflow-hidden shadow-sm">
-            <div className="px-5 py-3 border-b border-border flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-500 to-pink-500" />
-              <span className="text-sm font-semibold text-foreground">
-                סטוריז לאינסטגרם
-              </span>
-              <span className="text-xs text-muted">— 5 שקפים, 1080x1920</span>
-            </div>
-            <div className="p-5">
-              <div className="flex gap-4 overflow-x-auto pb-2 snap-x">
-                {campaign.stories.slice(0, 5).map((s) => (
-                  <StoryCard
-                    key={s.slide}
-                    slide={s}
-                    business={campaign.business_name}
-                    isFreePlan={isFreePlan}
-                    brand={campaign.brand_profile}
+        <div className="mt-8 rounded-2xl border border-border bg-surface overflow-hidden shadow-sm">
+          <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-500 to-pink-500" />
+            <span className="text-sm font-semibold text-foreground">
+              סטוריז לאינסטגרם
+            </span>
+            <span className="text-xs text-muted">— 5 שקפים, 1080x1920</span>
+          </div>
+          <div className="p-5">
+            {campaign.stories && campaign.stories.length > 0 ? (
+              <>
+                <div className="flex gap-4 overflow-x-auto pb-2 snap-x">
+                  {campaign.stories.slice(0, 5).map((s) => (
+                    <StoryCard
+                      key={s.slide}
+                      slide={s}
+                      business={campaign.business_name}
+                      isFreePlan={isFreePlan}
+                      brand={campaign.brand_profile}
+                    />
+                  ))}
+                </div>
+                <div className="mt-4">
+                  <CopyButton
+                    label="העתק את כל הסטוריז"
+                    text={campaign.stories
+                      .map(
+                        (s) =>
+                          `שקף ${s.slide} — ${s.role}\n${s.title}\n${s.body}\n${s.cta}`
+                      )
+                      .join("\n\n")}
                   />
+                </div>
+              </>
+            ) : (
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="shrink-0 w-[220px] aspect-[9/16] rounded-2xl bg-gradient-to-br from-primary/20 via-accent/15 to-primary/20 animate-pulse flex items-center justify-center"
+                  >
+                    {i === 2 && (
+                      <div className="text-center text-xs text-muted">
+                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        מייצרים Stories...
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
-              <div className="mt-4">
-                <CopyButton
-                  label="העתק את כל הסטוריז"
-                  text={campaign.stories
-                    .map(
-                      (s) =>
-                        `שקף ${s.slide} — ${s.role}\n${s.title}\n${s.body}\n${s.cta}`
-                    )
-                    .join("\n\n")}
-                />
-              </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Video ad */}
         <VideoSection
