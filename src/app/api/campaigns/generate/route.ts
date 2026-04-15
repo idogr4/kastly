@@ -111,7 +111,6 @@ async function smartScan(
     return { ...single, source: type, effectiveUrl: normalized };
   }
 
-  // Website: try deep scrape, then fallback to base domain
   const deep = await deepScrapeWebsite(firecrawl, normalized);
   if (deep && deep.content.trim().length > 200) {
     return { ...deep, source: "website", effectiveUrl: normalized };
@@ -128,168 +127,178 @@ async function smartScan(
   return null;
 }
 
-// --- Prompt ---
+// --- Prompts ---
 
-const SYSTEM_PROMPT = `אתה מנהל קריאייטיב בכיר וסטרטג מותג ישראלי — ברמת הכותבים של Nike, Apple ו-Airbnb. אתה מייצר נכסים שיווקיים שנראים כאילו סוכנות פרימיום עם תקציב גבוה עבדה עליהם שבועות. כל מילה, כל צבע, כל ויזואל — ספציפי לעסק הזה, לא גנרי.
+const BASE_SYSTEM = `אתה מנהל קריאייטיב ישראלי בכיר וסטרטג מותג ברמת הסוכנויות המובילות בארץ (מקאן, ג'יי.וולטר תומפסון, באומן בר ריבנאי). אתה כותב עברית מושלמת — כמו קופירייטר שנולד בתל אביב, לא כמו תרגום מאנגלית.
 
-עקרונות הכתיבה שלך:
-- כל כותרת חייבת לעבור את מבחן "עצירת הגלילה" — האם מישהו באמת יעצור?
-- הטקסט הוא שיחה, לא שידור. מדברים כמו לחבר, לא כמו לציבור.
-- ספציפיות מוכרת. "2,847 אנשים" חזק יותר מ"אלפים". "48 שעות" חזק יותר מ"מהר".
-- כל מודעה חייבת מתח רגשי — פער בין איפה שהקורא נמצא לאן שהוא רוצה להגיע.
-- CTA זו הבטחה, לא פקודה. "תטעמו את ההבדל" חזק מ"לחצו עכשיו".
-- עברית טבעית: בלי ניסוחים מליציים, בלי תרגומית, כן עם הומור מקומי כשמתאים.
-- לכל פלטפורמה תרבות משלה: פייסבוק סיפורי ואנושי, אינסטגרם קצר וויזואלי, לינקדאין מקצועי עם נתונים.
-
-עקרונות הזהות הוויזואלית:
-- כל נכס חייב להשתמש באותם צבעים, באותו טון, ובאותה שפה ויזואלית — עקביות ברמת מותג.
-- הצבעים לא גנריים. הם מתאימים לקטגוריה ולטון: אוכל → חם ועמוק (ענבר/בורדו/חום), טכנולוגיה → מינימליסטי וקר (כחול/סגול/שחור), יופי/ספא → רך וחלבי (פודרה/ורד/לבן-שמנת), כושר → אנרגטי וכהה (שחור/ניאון), יוקרה → נקי ומחושב (שחור/זהב/לבן), ביתי → חמים וארצי (קרם/זית/חמרה).
-- פונט מותאם לטון: modern-sans לטכנולוגיה, serif-elegant ליוקרה, handwritten-warm לאוכל ביתי, bold-geometric לכושר, clean-sans לעסקים מקצועיים.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+שפת הכתיבה — עברית ישראלית אותנטית
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- עברית זורמת, ישירה, לא-מליצית, לא-תרגומית
+- טון של שיחה בין חברים, לא שידור לציבור
+- משפטים קצרים וחדים
+- בלי קלישאות (הפתרון המוביל, שירות ללא פשרות, איכות בלתי מתפשרת, מגוון רחב, פתרון מקצה לקצה) — אלה מת ב-2015
+- כן: הומור ישראלי עדין, שפת רחוב חכמה, מטאפורות מקומיות כשמתאים
+- פייסבוק: פותח בסיפור אישי/סצנה — "יושבת פה מול המחשב ב-2 בלילה..."; הגוף מזיז את הקורא דרך מתח רגשי; CTA רך ומזמין
+- אינסטגרם: פותח חד, 1-2 משפטים עוצמתיים, 3-5 אימוג'י מדויקים (לא ספאם), האשטאגים בעברית (#אוכל_ביתי #תלאביב) ובאנגלית מעורבים
+- לינקדאין: תובנה מקצועית או נתון, ניתוח קצר בגובה העיניים, לא ג'רגון של יועצים
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 כלל ברזל — אמת בלבד
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+אסור: להמציא מספרים, ציטוטים, פרסים, שנות ותק, סניפים, שמות מייסדים, סטטיסטיקות, או כל טענה שאינה באתר/בקלט.
+מותר: מידע מהקלט, רגשות ומוטיבציות של הקהל (אוניברסליים לתחום), תיאור הכאב, מסרי ערך כלליים.
+כשחסר מידע ספציפי: כתוב קופי חזק על הערך הרגשי, לא על מספרים. עדיף אמיתי וכללי מאשר ספציפי ושקרי.`;
 
-אסור בהחלט:
-- המצאת מספרים (מספר לקוחות, אחוזי הצלחה, שביעות רצון, סטטיסטיקות)
-- המצאת ציטוטים מלקוחות או טסטימוניאלים
-- המצאת פרסים, הכרות, תקני ISO או תעודות
-- המצאת שנות ניסיון אם לא מופיע באתר/בתיאור
-- המצאת לוקציות, סניפים או אזורי שירות שלא מוזכרים
-- המצאת שמות של מייסדים, שותפים, לקוחות
-- כל טענה שאינה מבוססת ישירות על הקלט
+const CALL_A_SYSTEM = `${BASE_SYSTEM}
 
-מותר רק:
-- מידע שסרקת ישירות מהאתר/מהקלט
-- מידע שהמשתמש כתב בתיאור
-- מסרים שיווקיים על הערך הכללי של המוצר/השירות
-- תיאור הכאב של הקהל (לא הבטחות כמותיות על פתרון)
-- רגשות, מוטיבציות ושפת קהל — אלה אוניברסליים לתחום
+אתה בשלב ראשון: הגדרת זהות המותג, פרסונת הקהל, ופרומפטים ויזואליים. הבסיס לכל שאר הנכסים יתבסס עליך — דייק.`;
 
-כשחסר מידע ספציפי:
-- כתוב קופי חזק על הערך הכללי והרגשי, לא על מספרים
-- "מאפייה משפחתית" במקום "מאפייה עם 3 סניפים"
-- "כבר שנים" במקום "מאז 1987" (אלא אם כתוב)
-- "אלפי לקוחות מרוצים" אסור — עדיף משפט על החוויה
-- עדיף להיות אמיתי וכללי מאשר ספציפי ושקרי`;
+const CALL_B_SYSTEM = `${BASE_SYSTEM}
 
-function buildUserPrompt(args: {
-  inputContext: string;
-  missingDataWarning?: string;
-}) {
-  return `נתח את העסק לעומק וצור חבילת שיווק פרימיום מלאה — הכול בעברית ישראלית טבעית, מותאם באופן ספציפי לעסק הזה.
+אתה בשלב שני: כתיבת המודעות ודף הנחיתה. כל וריאציה חייבת לעצור גלילה באמת — לא לעבור מבחן "כן, עוד מודעה". אם אתה כותב טיוטה שמרגישה גנרית — שכתב אותה עד שהיא קונקרטית לעסק הזה.`;
 
-${args.inputContext}
+function buildCallAPrompt(inputContext: string, missingDataWarning: string) {
+  return `נתח את העסק לעומק ובנה את הבסיס: פרופיל מותג מלא, פרסונת קהל, ופרומפטים ויזואליים לתמונות.
 
-${args.missingDataWarning ?? ""}
+${inputContext}
 
-שלב 0 — פרופיל מותג (BRAND PROFILE)
-לפני שאתה כותב מילה אחת, תגדיר את זהות המותג. הפרופיל הזה יהיה הבסיס לכל הנכסים ויבטיח עקביות.
-- חלץ או הסק: קטגוריה (food / tech / beauty / fitness / professional / luxury / home / other)
-- טון רגשי (warm / professional / energetic / luxurious / cozy / tech / playful)
-- צבעים: ערכי hex מדויקים לפרימרי, סקנדרי, אקסנט, רקע, טקסט — הצבעים חייבים להתאים לקטגוריה ולטון. אל תשתמש בצבעי ברירת מחדל כמו #6c5ce7 אלא אם הם באמת מתאימים.
-- פונט (modern-sans / serif-elegant / handwritten-warm / bold-geometric / clean-sans)
-- מסר מרכזי במשפט אחד
-- ייחוד (מה שמבדיל אותם מהמתחרים)
-- הכאב שהעסק פותר
+${missingDataWarning}
 
-שלב 1 — פרסונה
-בנה פרסונה מפורטת של קהל היעד האידיאלי בישראל. חשוב: מי הקונה האידיאלי? מה מטריד אותו בלילה? מה יגרום לו לעצור את הגלילה?
+━━━ פרופיל מותג ━━━
+- category: food | tech | beauty | fitness | professional | luxury | home | other
+- tone רגשי: warm | professional | energetic | luxurious | cozy | tech | playful
+- צבעים (hex): חייבים להתאים לקטגוריה ולטון — לא ברירות מחדל גנריות
+  · אוכל: ענבר/בורדו/חום חם (#8b2f1d, #f4a261, #ffd166)
+  · טכנולוגיה: כחול/סגול/שחור קר (#0a0f2c, #2e5bff, #00e5ff)
+  · יופי/ספא: פודרה/ורד/שמנת (#ffd6e0, #f7b2c1, #c7b6f5)
+  · כושר: שחור/ניאון אנרגטי (#0b0b0d, #ff3d3d, #d6ff2a)
+  · יוקרה: שחור/זהב/לבן (#0c0c0c, #b08d57, #e8c77d)
+  · ביתי: קרם/זית/חמרה (#6b4f3b, #d8c3a5, #e98a58)
+  בחר גוונים ייחודיים שמתאימים לעסק הספציפי — לא אוטומטיים.
+- font_style: modern-sans | serif-elegant | handwritten-warm | bold-geometric | clean-sans
 
-שלב 2 — וריאציות
-עבור כל פלטפורמה (פייסבוק, אינסטגרם, לינקדאין), צור בדיוק 3 וריאציות:
-1. "pain" — פותחת עם הכאב או הצורך הלא-ממומש של הקהל
-2. "curiosity" — פותחת פער ידע שמחייב לחיצה
-3. "numbers" — פותחת עם מספר או נתון ספציפי ומפתיע
+━━━ פרומפטים לתמונות ━━━
+הפרומפטים באנגלית בלבד — לא עברית. כל פרומפט חייב להיות ספציפי למוצר/שירות שנסרק (לא generic).
 
-כל וריאציה חייבת:
-- כותרת שעוצרת גלילה (לא גנרית — חייבת ליצור מתח או הפתעה)
-- גוף שמספר סיפור-זעיר שבונה מומנטום רגשי לקראת ה-CTA
-- CTA שמרגיש כמו צעד טבעי הבא, לא מכירה כבדה
-- מותאם לתרבות הפלטפורמה בישראל (פייסבוק: סיפורי / אינסטגרם: ויזואלי עם אימוג׳י והאשטגים בעברית / לינקדאין: תובנות מקצועיות)
+מבנה של כל פרומפט:
+[SCENE קונקרטי מהעסק] + [COMPOSITION] + [LIGHTING] + [CAMERA: 85mm f/1.4 / 35mm / etc.] + [COLOR PALETTE: include the brand hex colors] + [STYLE: professional marketing photo, editorial ad photography]
 
-שלב 3 — ציוני איכות
-דרג כל וריאציה (1-10) על:
-- hook: האם זה באמת יעצור גלילה?
-- clarity: האם ההצעה ברורה בתוך 3 שניות?
-- cta: האם ה-CTA מרגיש טבעי ולא-מאיים?
-- platform_fit: האם זה מרגיש ילידי לפלטפורמה?
-- overall: ציון איכות כולל
+דוגמה לבית קפה:
+"cozy Israeli specialty coffee shop interior, warm golden morning light spilling through large windows, wooden communal table with freshly pulled espresso and buttery croissant in the foreground, barista in background steaming milk with soft focus, rich amber and deep brown palette (#8b2f1d, #f4a261) with cream accents, shot on 85mm lens at f/1.4, shallow depth of field, editorial food photography, warm inviting mood, professional marketing campaign photo, no text"
 
-הוצא רק וריאציות עם ציון 7+. אם טיוטה מתחת ל-7, כתוב אותה מחדש.
+דוגמה לאפליקציית פיננסים:
+"minimal modern product photography of a sleek smartphone displaying a clean financial dashboard on a matte dark desk, cool blue and violet palette (#0a0f2c, #2e5bff) with crisp white type, soft studio lighting from the left, subtle glow around the screen, 50mm lens at f/2.8, shallow focus, premium tech editorial style, professional marketing ad, no text overlays"
 
-החזר תגובה ב-JSON במבנה המדויק הזה. כל הטקסטים בעברית (חוץ מ-hook_type, brand_profile enums ו-image/visual prompts):
+החזר JSON בלבד (בלי markdown fences):
 {
-  "business_name": "שם העסק בעברית",
-  "business_description": "משפט אחד משכנע על מה שהם עושים ולמה זה חשוב",
+  "business_name": "שם העסק בעברית טבעית",
+  "business_description": "משפט אחד מדויק — מה העסק עושה ולמה זה חשוב לקהל שלו",
   "brand_profile": {
-    "category": "food | tech | beauty | fitness | professional | luxury | home | other",
-    "tone": "warm | professional | energetic | luxurious | cozy | tech | playful",
-    "colors": {
-      "primary": "#RRGGBB",
-      "secondary": "#RRGGBB",
-      "accent": "#RRGGBB",
-      "background": "#RRGGBB",
-      "text": "#RRGGBB"
-    },
-    "font_style": "modern-sans | serif-elegant | handwritten-warm | bold-geometric | clean-sans",
-    "audience": {
-      "age": "לדוגמה 25-40",
-      "gender": "נשים / גברים / כולם",
-      "interests": ["3-5 תחומי עניין ספציפיים"]
-    },
-    "core_message": "המסר המרכזי במשפט אחד בעברית",
-    "differentiation": "מה מבדיל את העסק הזה",
+    "category": "...",
+    "tone": "...",
+    "colors": { "primary": "#RRGGBB", "secondary": "#RRGGBB", "accent": "#RRGGBB", "background": "#RRGGBB", "text": "#RRGGBB" },
+    "font_style": "...",
+    "audience": { "age": "25-40", "gender": "נשים / גברים / כולם", "interests": ["3-5 תחומי עניין"] },
+    "core_message": "המסר המרכזי במשפט אחד",
+    "differentiation": "מה מבדיל את העסק הזה מהמתחרים הישירים",
     "pain_solved": "הכאב הספציפי שהעסק פותר",
     "music_mood": "upbeat | calm | elegant | energetic | warm | tech-modern"
   },
   "persona": {
-    "age_range": "לדוגמה 25-40",
+    "age_range": "25-40",
     "gender": "נשים / גברים / כולם",
-    "pain_points": ["3 נקודות כאב ספציפיות"],
+    "pain_points": ["3 נקודות כאב ספציפיות לקהל"],
     "desires": ["3 רצונות/שאיפות ספציפיות"],
     "scroll_stoppers": ["3 רעיונות ויזואליים שעוצרים גלילה"],
     "objections": ["3 התנגדויות קנייה עיקריות"],
     "tone": "תיאור קול המותג האידיאלי לקהל הזה"
   },
-  "facebook": [
-    {
-      "hook_type": "pain",
-      "headline": "כותרת שעוצרת גלילה",
-      "body": "גוף מודעה (3-5 משפטים, בגישה סיפורית)",
-      "cta": "קריאה לפעולה",
-      "scores": { "hook": 9, "clarity": 8, "cta": 8, "platform_fit": 9, "overall": 9 }
-    },
-    { "hook_type": "curiosity", ... },
-    { "hook_type": "numbers", ... }
-  ],
-  "instagram": [אותו מבנה 3-וריאציות עם האשטגים ואימוג׳י],
-  "linkedin": [אותו מבנה 3-וריאציות בטון מקצועי],
-  "landing_page": {
-    "hero_headline": "כותרת דף נחיתה משכנעת",
-    "hero_subheadline": "תת-כותרת תומכת",
-    "features": ["יתרון 1", "יתרון 2", "יתרון 3"],
-    "cta": "טקסט כפתור ראשי"
-  },
   "image_prompts": {
-    "facebook": "prompt באנגלית ליצירת תמונה 1200x628 — SCENE + COMPOSITION + LIGHTING + CAMERA + COLOR PALETTE (ציין את ה-hex colors של הברנד). חייב להיראות כאילו צלם מקצועי צילם את זה לקמפיין premium — לא stock. סגנון ויזואלי מותאם לקטגוריה: food → appetizing warm close-up, rich tones / tech → minimal modern scene, clean geometric / beauty → soft elegant lighting, pastel tones / fitness → high-contrast dynamic action, dark energetic / luxury → dramatic chiaroscuro, gold accents / home → natural earthy styling, inviting.",
-    "instagram": "prompt באנגלית ליצירת תמונה 1080x1080 — כנ״ל אבל קומפוזיציה ריבועית, instagram-native aesthetic, scroll-stopping.",
-    "linkedin": "prompt באנגלית ליצירת תמונה 1200x627 — business-grade photography, authoritative, clean. שוב עם color palette של הברנד."
-  },
+    "facebook": "English prompt, 1200x628 landscape composition, scene specific to THIS business. Include brand hex colors.",
+    "instagram": "English prompt, 1080x1080 square composition, instagram-native aesthetic, scroll-stopping. Include brand hex colors.",
+    "linkedin": "English prompt, 1200x627 landscape, business-grade editorial photography. Include brand hex colors."
+  }
 }
 
-חוקים סופיים לכל הנכסים:
-1. אף מילה גנרית — הכול ספציפי לעסק הזה, לקהל הזה, לכאב הזה.
-2. צבעי הברנד עקביים בכל הנכסים — לא שינוי מפלטפורמה לפלטפורמה.
-3. הטקסטים מותאמים לתרבות הפלטפורמה (לא אותו טקסט עם variations קלות).
-4. CTA תמיד מרגיש כמו הצעה, לא כמו לחץ.
-5. דוגמאות ישראליות כשרלוונטי (תל אביב, חיפה, ירושלים, רמת גן — לא ניו יורק).
+JSON חוקי בלבד. בלי טקסט נוסף.`;
+}
 
-image_prompts נשארים באנגלית (כי מנוע התמונות פועל באנגלית). כל שאר הטקסטים — בעברית.
+function buildCallBPrompt(inputContext: string, missingDataWarning: string) {
+  return `נתח את העסק וכתוב 9 מודעות ודף נחיתה — כל מילה קונקרטית לעסק הזה, שפת קופי ישראלית אותנטית.
 
-חשוב: אם המידע שקיבלת דל או חסר פרטים מסוימים, השתמש רק במה שמופיע. אל תמציא שמות, מספרים, סטטיסטיקות או עובדות שלא נתתי לך.
+${inputContext}
 
-השב רק ב-JSON חוקי, בלי גדרי markdown ובלי טקסט נוסף.`;
+${missingDataWarning}
+
+━━━ 3 וריאציות לכל פלטפורמה ━━━
+לכל פלטפורמה (facebook, instagram, linkedin) בדיוק 3 וריאציות:
+1. "pain" — פותחת עם הכאב הלא-ממומש של הקהל
+2. "curiosity" — פותחת פער ידע שמחייב לחיצה
+3. "numbers" — פותחת עם נתון ספציפי ומפתיע (רק אם מופיע בקלט; אחרת — זווית אחרת שמרגישה קונקרטית)
+
+דרישות איכות קשיחות:
+- כותרת: עד 60 תווים, עוצרת גלילה אמיתית, לא קלישאה
+- גוף: טבעי כמו חבר מדבר. בפייסבוק 3-5 משפטים סיפוריים. באינסטגרם 2-3 קצרים עם אימוג'י מדויקים. בלינקדאין תובנה מקצועית קצרה עם זווית מעניינת.
+- CTA: הצעה טבעית, לא פקודה ("בואו נכיר" / "רוצה לטעום?" / "נשלח לכם דוגמה" / "בואו נדבר" — לא "לחצו עכשיו!")
+- אינסטגרם: 3-6 האשטאגים רלוונטיים (שילוב עברית ואנגלית: #תלאביב #coffee_lover)
+- לינקדאין: ללא אימוג'י מוגזמים, טון מקצועי ישראלי ("מה שלמדנו לאחרונה..." / "תובנה מהשטח...")
+
+━━━ ציון איכות לכל וריאציה ━━━
+דרג כל וריאציה (1-10): hook, clarity, cta, platform_fit, overall
+אם overall < 7 — שכתב לפני החזרה. תחזיר רק איכות 7+.
+
+━━━ דף נחיתה ━━━
+- hero_headline: כותרת חזקה, עד 70 תווים, ספציפית לעסק
+- hero_subheadline: תת-כותרת בגובה העיניים, 1-2 משפטים, מסביר ערך
+- features: בדיוק 3 יתרונות קונקרטיים (לא "שירות מעולה" — דברים אמיתיים כמו "משלוח באותו יום לכל הארץ")
+- cta: טקסט כפתור אחד, פועל ברור
+
+החזר JSON בלבד (בלי markdown fences):
+{
+  "facebook": [
+    { "hook_type": "pain", "headline": "...", "body": "...", "cta": "...", "scores": { "hook": 9, "clarity": 8, "cta": 8, "platform_fit": 9, "overall": 9 } },
+    { "hook_type": "curiosity", "headline": "...", "body": "...", "cta": "...", "scores": { ... } },
+    { "hook_type": "numbers", "headline": "...", "body": "...", "cta": "...", "scores": { ... } }
+  ],
+  "instagram": [ 3 וריאציות באותו מבנה ],
+  "linkedin": [ 3 וריאציות באותו מבנה ],
+  "landing_page": {
+    "hero_headline": "...",
+    "hero_subheadline": "...",
+    "features": ["...", "...", "..."],
+    "cta": "..."
+  }
+}
+
+JSON חוקי בלבד. בלי טקסט נוסף.`;
+}
+
+function stripJsonFences(raw: string): string {
+  let s = raw.trim();
+  if (s.startsWith("```")) {
+    s = s.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  }
+  return s;
+}
+
+async function callClaude(
+  anthropic: Anthropic,
+  system: string,
+  user: string,
+  maxTokens: number
+): Promise<unknown> {
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: maxTokens,
+    system,
+    messages: [{ role: "user", content: user }],
+  });
+  const textBlock = message.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("Empty Claude response");
+  }
+  return JSON.parse(stripJsonFences(textBlock.text));
 }
 
 export async function POST(request: NextRequest) {
@@ -306,7 +315,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Check plan limits for authenticated users
   const supabase = await createClient();
   const {
     data: { user },
@@ -417,32 +425,45 @@ ${description}
       apiKey: process.env.ANTHROPIC_API_KEY!,
     });
 
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 6000,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: buildUserPrompt({ inputContext, missingDataWarning }),
-        },
-      ],
-    });
+    // Run brand+persona+image_prompts and ads+landing_page in PARALLEL
+    // to comfortably beat Vercel's 60s cap on paid plans and stay <120s.
+    const [foundation, content] = await Promise.all([
+      callClaude(
+        anthropic,
+        CALL_A_SYSTEM,
+        buildCallAPrompt(inputContext, missingDataWarning),
+        2500
+      ) as Promise<{
+        business_name: string;
+        business_description: string;
+        brand_profile: unknown;
+        persona: unknown;
+        image_prompts: unknown;
+      }>,
+      callClaude(
+        anthropic,
+        CALL_B_SYSTEM,
+        buildCallBPrompt(inputContext, missingDataWarning),
+        4500
+      ) as Promise<{
+        facebook: unknown;
+        instagram: unknown;
+        linkedin: unknown;
+        landing_page: unknown;
+      }>,
+    ]);
 
-    const textBlock = message.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return NextResponse.json(
-        { error: "משהו השתבש ביצירת הקמפיין. נסו שוב." },
-        { status: 500 }
-      );
-    }
-
-    let raw = textBlock.text.trim();
-    if (raw.startsWith("```")) {
-      raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    }
-
-    const campaign = JSON.parse(raw);
+    const campaign = {
+      business_name: foundation.business_name,
+      business_description: foundation.business_description,
+      brand_profile: foundation.brand_profile,
+      persona: foundation.persona,
+      image_prompts: foundation.image_prompts,
+      facebook: content.facebook,
+      instagram: content.instagram,
+      linkedin: content.linkedin,
+      landing_page: content.landing_page,
+    };
 
     return NextResponse.json({
       campaign,

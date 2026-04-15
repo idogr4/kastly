@@ -9,24 +9,15 @@ const PLATFORM_DIMENSIONS: Record<string, { width: number; height: number }> = {
 };
 
 const CATEGORY_STYLE: Record<string, string> = {
-  food:
-    "appetizing, warm golden lighting, shallow depth of field, food-editorial photography, rich saturated tones, artisanal styling",
-  tech:
-    "minimal modern product photography, clean geometric composition, crisp studio lighting on subtle gradient, futuristic polish",
-  beauty:
-    "soft diffused lighting, pastel tones, elegant composition, editorial beauty photography, skin texture detail, subtle bokeh",
-  fitness:
-    "high-contrast dynamic action shot, dramatic rim lighting, motion-blur energy, dark moody background with bright key subject",
-  luxury:
-    "dramatic chiaroscuro lighting, gold and deep tones, refined texture, premium editorial photography, slow-shutter elegance",
-  home:
-    "natural earthy styling, warm daylight, cozy interior context, lifestyle magazine photography, inviting and lived-in",
-  professional:
-    "clean corporate photography, bright even lighting, modern office aesthetic, confident composition, business-grade polish",
-  playful:
-    "bright pop colors, playful geometric composition, crisp flat studio light, friendly energetic vibe",
-  other:
-    "premium commercial photography, carefully composed, natural lighting, high detail, editorial style",
+  food: "appetizing close-up with rich warm tones, soft golden-hour window light, shallow depth of field, food editorial photography, artisanal natural styling",
+  tech: "minimal modern product scene, clean geometric composition, crisp soft studio light on matte background, subtle gradient, premium tech editorial",
+  beauty: "soft diffused lighting, pastel palette, elegant minimal composition, editorial beauty photography, fine skin texture, gentle bokeh",
+  fitness: "high-contrast dynamic action, dramatic rim lighting, motion energy, dark moody background with bright key subject, athletic editorial",
+  luxury: "dramatic chiaroscuro lighting, deep tones with gold accents, refined textures, premium editorial photography, slow elegant mood",
+  home: "natural earthy styling, warm daylight through window, lived-in cozy interior context, lifestyle magazine photography, inviting",
+  professional: "clean corporate scene, bright even lighting, modern office aesthetic, confident composition, business editorial polish",
+  playful: "bright pop colors, playful geometric composition, crisp flat studio light, friendly energetic vibe",
+  other: "premium commercial photography, natural lighting, carefully composed, editorial marketing style",
 };
 
 const TONE_MODIFIER: Record<string, string> = {
@@ -55,30 +46,37 @@ interface BrandProfile {
   colors?: BrandColors;
 }
 
-function enhancePrompt(
-  basePrompt: string,
-  brand: BrandProfile | null
-): string {
+// Strip any non-Latin / Hebrew characters that slipped through — Flux works
+// best in English and degrades sharply on Hebrew tokens.
+function sanitizeToEnglish(input: string): string {
+  // Remove Hebrew block and Arabic block entirely
+  return input.replace(/[\u0590-\u05FF\u0600-\u06FF]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function enhancePrompt(basePrompt: string, brand: BrandProfile | null): string {
+  const safeBase = sanitizeToEnglish(basePrompt);
   const category = (brand?.category || "other").toLowerCase();
   const tone = (brand?.tone || "").toLowerCase();
   const styleLine = CATEGORY_STYLE[category] || CATEGORY_STYLE.other;
   const toneLine = TONE_MODIFIER[tone] || "";
 
   const paletteBits: string[] = [];
-  if (brand?.colors?.primary) paletteBits.push(`primary ${brand.colors.primary}`);
-  if (brand?.colors?.secondary) paletteBits.push(`secondary ${brand.colors.secondary}`);
+  if (brand?.colors?.primary) paletteBits.push(`dominant ${brand.colors.primary}`);
+  if (brand?.colors?.secondary) paletteBits.push(`supporting ${brand.colors.secondary}`);
   if (brand?.colors?.accent) paletteBits.push(`accent ${brand.colors.accent}`);
   const palette = paletteBits.length
-    ? `color palette incorporating ${paletteBits.join(", ")}`
+    ? `color palette: ${paletteBits.join(", ")} — colors must read clearly in the image`
     : "";
 
   const parts = [
-    basePrompt.trim(),
+    safeBase,
     styleLine,
     toneLine,
     palette,
-    "shot on full-frame camera, 85mm lens, natural composition, ultra-detailed, sharp focus, premium commercial ad photography, looks like it was shot by a top-tier photographer for a brand campaign",
-    "no text overlays, no watermarks, no logos, no captions",
+    "shot on full-frame camera, 85mm lens at f/1.8, natural composition, ultra-detailed, razor-sharp focus on subject",
+    "professional marketing photo, editorial ad photography, premium brand campaign, looks shot by a top-tier commercial photographer",
+    "photorealistic, no illustration, no 3d render, no cartoon, no stock-photo look",
+    "absolutely no text, no letters, no words, no numbers, no watermarks, no logos, no captions, no signage typography",
   ].filter(Boolean);
 
   return parts.join(". ");
@@ -152,8 +150,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// --- Retry helper: exponential backoff on 429 / 503 ---
-
 function extractStatus(err: unknown): number | null {
   if (!err || typeof err !== "object") return null;
   const anyErr = err as { status?: number; response?: { status?: number } };
@@ -161,7 +157,6 @@ function extractStatus(err: unknown): number | null {
   if (anyErr.response && typeof anyErr.response.status === "number") {
     return anyErr.response.status;
   }
-  // Fallback: parse from message "... failed with status 429 ..."
   const msg = (err as { message?: string }).message ?? "";
   const m = /status\s+(\d{3})/.exec(msg);
   return m ? Number(m[1]) : null;
@@ -184,7 +179,6 @@ async function runWithRetry<T>(fn: () => Promise<T>, maxAttempts = 4): Promise<T
       if (!retryable) throw err;
       attempt++;
       if (attempt >= maxAttempts) break;
-      // Exponential backoff with jitter: 1.5s, 3s, 6s (+ up to 500ms jitter)
       const base = 1500 * Math.pow(2, attempt - 1);
       const jitter = Math.floor(Math.random() * 500);
       const wait = base + jitter;

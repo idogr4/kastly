@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 export const maxDuration = 300;
 
-const J2V_ENDPOINT = "https://api.json2video.com/v2/movies";
-const DEFAULT_HEBREW_VOICE = "he-IL-HilaNeural";
+// --- Shotstack config ----------------------------------------------------
+const SHOTSTACK_ENV = (process.env.SHOTSTACK_ENV || "stage").toLowerCase();
+const SHOTSTACK_BASE = `https://api.shotstack.io/edit/${SHOTSTACK_ENV}`;
 
+// --- ElevenLabs config ---------------------------------------------------
+const ELEVEN_VOICE_ID =
+  process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Rachel (multilingual)
+const ELEVEN_MODEL = process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2";
+
+// --- Types ---------------------------------------------------------------
 interface BrandColors {
   primary?: string;
   secondary?: string;
@@ -33,30 +41,11 @@ interface VideoRequestBody {
   brand_profile?: BrandProfile;
 }
 
-function truncate(s: string, n: number): string {
-  if (!s) return "";
-  const clean = s.replace(/\s+/g, " ").trim();
-  return clean.length > n ? clean.slice(0, n - 1).trimEnd() + "…" : clean;
-}
-
-// Category-appropriate music — set CREATOMATE_/JSON2VIDEO_MUSIC_* envs or rely on defaults
-function pickMusicUrl(mood: string | undefined, category: string | undefined): string | undefined {
-  const byMood = mood ? process.env[`JSON2VIDEO_MUSIC_${mood.toUpperCase().replace(/-/g, "_")}`] : undefined;
-  const byCategory = category ? process.env[`JSON2VIDEO_MUSIC_${category.toUpperCase()}`] : undefined;
-  return byMood || byCategory || process.env.JSON2VIDEO_MUSIC_URL;
-}
-
-type J2VElement = Record<string, unknown>;
-type J2VScene = {
-  duration: number;
-  "background-color"?: string;
-  elements: J2VElement[];
-};
-
+// --- Palette fallbacks per category --------------------------------------
 const CATEGORY_COLOR_FALLBACK: Record<string, { primary: string; secondary: string; accent: string; text: string }> = {
   food: { primary: "#8b2f1d", secondary: "#f4a261", accent: "#ffd166", text: "#fff8ee" },
   tech: { primary: "#0a0f2c", secondary: "#2e5bff", accent: "#00e5ff", text: "#ffffff" },
-  beauty: { primary: "#ffd6e0", secondary: "#f7b2c1", accent: "#c7b6f5", text: "#3d2b40" },
+  beauty: { primary: "#f7b2c1", secondary: "#c7b6f5", accent: "#ffd6e0", text: "#3d2b40" },
   fitness: { primary: "#0b0b0d", secondary: "#ff3d3d", accent: "#d6ff2a", text: "#ffffff" },
   luxury: { primary: "#0c0c0c", secondary: "#b08d57", accent: "#e8c77d", text: "#f5ecd7" },
   home: { primary: "#6b4f3b", secondary: "#d8c3a5", accent: "#e98a58", text: "#fffbf3" },
@@ -76,7 +65,174 @@ function resolveColors(brand?: BrandProfile) {
   };
 }
 
-function buildMovie(args: {
+function truncate(s: string, n: number): string {
+  if (!s) return "";
+  const clean = s.replace(/\s+/g, " ").trim();
+  return clean.length > n ? clean.slice(0, n - 1).trimEnd() + "…" : clean;
+}
+
+function pickMusicUrl(mood?: string, category?: string): string | undefined {
+  const byMood = mood
+    ? process.env[`SHOTSTACK_MUSIC_${mood.toUpperCase().replace(/-/g, "_")}`]
+    : undefined;
+  const byCategory = category
+    ? process.env[`SHOTSTACK_MUSIC_${category.toUpperCase()}`]
+    : undefined;
+  return byMood || byCategory || process.env.SHOTSTACK_MUSIC_URL;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// --- ElevenLabs → Supabase upload ---------------------------------------
+async function generateNarrationUrl(script: string): Promise<string | null> {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!apiKey || !supabaseUrl || !serviceKey) return null;
+  if (!script.trim()) return null;
+
+  try {
+    const ttsRes = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${ELEVEN_VOICE_ID}`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+          Accept: "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text: script,
+          model_id: ELEVEN_MODEL,
+          voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.35, use_speaker_boost: true },
+        }),
+      }
+    );
+
+    if (!ttsRes.ok) {
+      console.error("ElevenLabs TTS failed:", ttsRes.status, await ttsRes.text().catch(() => ""));
+      return null;
+    }
+
+    const audioBytes = new Uint8Array(await ttsRes.arrayBuffer());
+    if (audioBytes.byteLength < 1000) return null;
+
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const key = `narration/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.mp3`;
+    const { error } = await supabase.storage
+      .from("campaign-audio")
+      .upload(key, audioBytes, { contentType: "audio/mpeg", upsert: false });
+
+    if (error) {
+      console.error("Supabase storage upload failed:", error);
+      return null;
+    }
+
+    const { data } = supabase.storage.from("campaign-audio").getPublicUrl(key);
+    return data?.publicUrl ?? null;
+  } catch (err) {
+    console.error("Narration generation error:", err);
+    return null;
+  }
+}
+
+// --- Shotstack timeline builder ------------------------------------------
+// 4 scenes: 8s + 12s + 10s + 6s = 36s (we use 8/12/10/6 per brief = 36s).
+// User requested 30s total; we compress to 6/10/8/6 = 30s exact.
+// NOTE: brief said 8/12/10/6 totals 36s — keeping 30s target: 6/10/8/6 = 30s.
+// To honor brief's staged emphasis we use 7/11/8/4 = 30s.
+const SCENE_DURATIONS = { opener: 7, hero: 11, benefits: 8, cta: 4 } as const;
+const TOTAL_DURATION =
+  SCENE_DURATIONS.opener +
+  SCENE_DURATIONS.hero +
+  SCENE_DURATIONS.benefits +
+  SCENE_DURATIONS.cta;
+
+type ShotstackClip = Record<string, unknown>;
+type ShotstackTrack = { clips: ShotstackClip[] };
+
+function textCard(opts: {
+  html: string;
+  css: string;
+  start: number;
+  length: number;
+  transitionIn?: string;
+  transitionOut?: string;
+  effect?: string;
+  width?: number;
+  height?: number;
+  position?: string;
+  offsetY?: number;
+}): ShotstackClip {
+  return {
+    asset: {
+      type: "html",
+      html: opts.html,
+      css: opts.css,
+      width: opts.width ?? 960,
+      height: opts.height ?? 400,
+      background: "transparent",
+    },
+    start: opts.start,
+    length: opts.length,
+    position: opts.position ?? "center",
+    offset: opts.offsetY !== undefined ? { y: opts.offsetY } : undefined,
+    transition: {
+      in: opts.transitionIn ?? "fade",
+      out: opts.transitionOut ?? "fade",
+    },
+    effect: opts.effect,
+    fit: "none",
+  };
+}
+
+function imageClip(opts: {
+  src: string;
+  start: number;
+  length: number;
+  effect?: "zoomIn" | "zoomOut" | "slideLeft" | "slideRight";
+  opacity?: number;
+}): ShotstackClip {
+  return {
+    asset: { type: "image", src: opts.src },
+    start: opts.start,
+    length: opts.length,
+    fit: "cover",
+    scale: 1,
+    opacity: opts.opacity ?? 1,
+    effect: opts.effect ?? "zoomIn",
+    transition: { in: "fade", out: "fade" },
+  };
+}
+
+function solidBg(color: string, start: number, length: number): ShotstackClip {
+  return {
+    asset: {
+      type: "html",
+      html: `<div class="bg"></div>`,
+      css: `.bg{width:1080px;height:1920px;background:${color};}`,
+      width: 1080,
+      height: 1920,
+      background: color,
+    },
+    start,
+    length,
+    fit: "cover",
+  };
+}
+
+const HEBREW_FONT_STACK =
+  "'Rubik','Heebo','Assistant','Noto Sans Hebrew',Arial,sans-serif";
+
+function buildRender(args: {
   businessName: string;
   headline: string;
   body: string;
@@ -85,303 +241,232 @@ function buildMovie(args: {
   images: string[];
   watermark: boolean;
   brand?: BrandProfile;
+  narrationUrl: string | null;
 }) {
-  const { businessName, headline, body, cta, features, images, watermark, brand } = args;
-  const voice = process.env.JSON2VIDEO_VOICE || DEFAULT_HEBREW_VOICE;
+  const { businessName, headline, body, cta, features, images, watermark, brand, narrationUrl } = args;
   const colors = resolveColors(brand);
 
-  const shortHeadline = truncate(headline, 80);
+  const shortHeadline = truncate(headline, 70);
   const shortBody = truncate(body, 140);
-  const shortCta = truncate(cta, 48);
-  const benefits = (features && features.length ? features : [shortBody]).slice(0, 3).map((f) => truncate(f, 60));
+  const shortCta = truncate(cta, 42);
+  const benefits = (features && features.length ? features : [shortBody])
+    .slice(0, 3)
+    .map((f) => truncate(f, 50));
 
-  // --- Scene 1: Opening (6s) — business name + Hebrew narration ---
-  const scene1: J2VScene = {
-    duration: 6,
-    "background-color": colors.primary,
-    elements: [
-      ...(images[0]
-        ? [
-            {
-              type: "image",
-              src: images[0],
-              duration: 6,
-              start: 0,
-              "zoom-effect": "zoomIn",
-              opacity: 0.35,
-              position: "center-center",
-              width: 1080,
-              height: 1920,
-            } as J2VElement,
-          ]
-        : []),
-      {
-        type: "text",
-        text: businessName,
-        start: 0.4,
-        duration: 5.4,
-        position: "center-center",
-        y: -150,
-        settings: {
-          "font-family": "Heebo",
-          "font-size": "84px",
-          "font-weight": "800",
-          color: colors.accent,
-          "text-align": "center",
-          "text-shadow": "0 4px 20px rgba(0,0,0,0.5)",
-        },
-        "fade-in": 0.5,
-      },
-      {
-        type: "text",
-        text: shortHeadline,
-        start: 1.2,
-        duration: 4.6,
-        position: "center-center",
-        y: 100,
-        settings: {
-          "font-family": "Heebo",
-          "font-size": "62px",
-          "font-weight": "600",
-          color: colors.text,
-          "text-align": "center",
-          "line-height": "1.3",
-          "text-shadow": "0 3px 14px rgba(0,0,0,0.4)",
-        },
+  const bgTrack: ShotstackClip[] = [];
+  const imageTrack: ShotstackClip[] = [];
+  const textTrack: ShotstackClip[] = [];
+
+  let cursor = 0;
+
+  // ---- Scene 1: Opener — business name + headline, primary bg ----
+  bgTrack.push(solidBg(colors.primary, cursor, SCENE_DURATIONS.opener));
+  if (images[0]) {
+    imageTrack.push(
+      imageClip({
+        src: images[0],
+        start: cursor,
+        length: SCENE_DURATIONS.opener,
+        effect: "zoomIn",
+        opacity: 0.35,
+      })
+    );
+  }
+  textTrack.push(
+    textCard({
+      html: `<div class="brand">${escapeHtml(businessName)}</div>`,
+      css: `.brand{width:960px;color:${colors.accent};font:800 96px/1.1 ${HEBREW_FONT_STACK};text-align:center;direction:rtl;text-shadow:0 6px 24px rgba(0,0,0,0.45);}`,
+      start: cursor + 0.3,
+      length: SCENE_DURATIONS.opener - 0.4,
+      offsetY: 0.22,
+      transitionIn: "fade",
+      transitionOut: "fade",
+    })
+  );
+  textTrack.push(
+    textCard({
+      html: `<div class="hl">${escapeHtml(shortHeadline)}</div>`,
+      css: `.hl{width:960px;color:${colors.text};font:600 58px/1.3 ${HEBREW_FONT_STACK};text-align:center;direction:rtl;text-shadow:0 4px 18px rgba(0,0,0,0.5);}`,
+      start: cursor + 1.0,
+      length: SCENE_DURATIONS.opener - 1.1,
+      offsetY: -0.1,
+      width: 960,
+      height: 500,
+      transitionIn: "fade",
+      transitionOut: "fade",
+    })
+  );
+
+  cursor += SCENE_DURATIONS.opener;
+
+  // ---- Scene 2: Hero image with zoom + animated description ----
+  bgTrack.push(solidBg(colors.secondary, cursor, SCENE_DURATIONS.hero));
+  const heroImg = images[1] || images[0];
+  if (heroImg) {
+    imageTrack.push(
+      imageClip({
+        src: heroImg,
+        start: cursor,
+        length: SCENE_DURATIONS.hero,
+        effect: "zoomOut",
+        opacity: 0.9,
+      })
+    );
+  }
+  textTrack.push(
+    textCard({
+      html: `<div class="desc"><div class="pill">${escapeHtml(shortBody)}</div></div>`,
+      css: `.desc{width:960px;direction:rtl;text-align:center;}.pill{display:inline-block;padding:28px 40px;border-radius:28px;background:rgba(0,0,0,0.55);color:#ffffff;font:600 52px/1.35 ${HEBREW_FONT_STACK};backdrop-filter:blur(6px);}`,
+      start: cursor + 0.6,
+      length: SCENE_DURATIONS.hero - 0.8,
+      offsetY: -0.32,
+      width: 980,
+      height: 540,
+      transitionIn: "slideUp",
+      transitionOut: "fade",
+    })
+  );
+
+  cursor += SCENE_DURATIONS.hero;
+
+  // ---- Scene 3: 3 benefits, staggered fade-in ----
+  bgTrack.push(solidBg(colors.primary, cursor, SCENE_DURATIONS.benefits));
+  textTrack.push(
+    textCard({
+      html: `<div class="hdr">${escapeHtml("למה אנחנו?")}</div>`,
+      css: `.hdr{width:960px;color:${colors.accent};font:700 60px/1.2 ${HEBREW_FONT_STACK};text-align:center;direction:rtl;}`,
+      start: cursor + 0.3,
+      length: SCENE_DURATIONS.benefits - 0.4,
+      offsetY: 0.34,
+      transitionIn: "fade",
+      transitionOut: "fade",
+    })
+  );
+  benefits.forEach((b, i) => {
+    const slot = 1.2 + i * 1.8;
+    textTrack.push(
+      textCard({
+        html: `<div class="bn"><span class="dot">✦</span>${escapeHtml(b)}</div>`,
+        css: `.bn{width:920px;direction:rtl;color:${colors.text};font:600 52px/1.35 ${HEBREW_FONT_STACK};text-align:center;}.dot{color:${colors.accent};margin-left:18px;}`,
+        start: cursor + slot,
+        length: SCENE_DURATIONS.benefits - slot - 0.2,
+        offsetY: 0.08 - i * 0.18,
         width: 960,
-        "fade-in": 0.6,
-      },
-    ],
-  };
+        height: 240,
+        transitionIn: "slideRight",
+        transitionOut: "fade",
+      })
+    );
+  });
 
-  // --- Scene 2: Screenshot / hero image + description (10s) ---
-  const scene2: J2VScene = {
-    duration: 10,
-    "background-color": colors.secondary,
-    elements: [
-      ...((images[1] || images[0])
-        ? [
-            {
-              type: "image",
-              src: images[1] || images[0],
-              duration: 10,
-              start: 0,
-              "zoom-effect": "zoomOut",
-              opacity: 0.85,
-              position: "center-center",
-              width: 1080,
-              height: 1920,
-            } as J2VElement,
-          ]
-        : []),
-      {
-        type: "text",
-        text: shortBody,
-        start: 0.5,
-        duration: 9.2,
-        position: "center-center",
-        y: 650,
-        settings: {
-          "font-family": "Heebo",
-          "font-size": "54px",
-          "font-weight": "600",
-          color: "#ffffff",
-          "background-color": "rgba(0,0,0,0.55)",
-          padding: "24px 36px",
-          "border-radius": "24px",
-          "text-align": "center",
-          "line-height": "1.35",
-        },
-        width: 960,
-        "fade-in": 0.6,
-      },
-    ],
-  };
+  cursor += SCENE_DURATIONS.benefits;
 
-  // --- Scene 3: 3 benefits with staggered animation (8s) ---
-  const scene3: J2VScene = {
-    duration: 8,
-    "background-color": colors.primary,
-    elements: [
-      {
-        type: "text",
-        text: "למה אנחנו?",
-        start: 0.2,
-        duration: 7.6,
-        position: "center-center",
-        y: -580,
-        settings: {
-          "font-family": "Heebo",
-          "font-size": "56px",
-          "font-weight": "700",
-          color: colors.accent,
-          "text-align": "center",
-        },
-        "fade-in": 0.4,
-      },
-      ...benefits.map((benefit, i) => ({
-        type: "text",
-        text: `✦  ${benefit}`,
-        start: 0.8 + i * 1.6,
-        duration: 7.2 - i * 1.6,
-        position: "center-center",
-        y: -180 + i * 220,
-        settings: {
-          "font-family": "Heebo",
-          "font-size": "50px",
-          "font-weight": "600",
-          color: colors.text,
-          "text-align": "center",
-          "line-height": "1.3",
-        },
-        width: 920,
-        "fade-in": 0.5,
-      })),
-    ],
-  };
+  // ---- Scene 4: CTA finale on accent bg, pulse zoom ----
+  bgTrack.push(solidBg(colors.accent, cursor, SCENE_DURATIONS.cta));
+  if (images[2] || images[0]) {
+    imageTrack.push(
+      imageClip({
+        src: (images[2] || images[0])!,
+        start: cursor,
+        length: SCENE_DURATIONS.cta,
+        effect: "zoomIn",
+        opacity: 0.22,
+      })
+    );
+  }
+  textTrack.push(
+    textCard({
+      html: `<div class="cta">${escapeHtml(shortCta)}</div>`,
+      css: `.cta{width:960px;color:${colors.primary};font:800 118px/1.15 ${HEBREW_FONT_STACK};text-align:center;direction:rtl;text-shadow:0 6px 22px rgba(0,0,0,0.18);}`,
+      start: cursor + 0.2,
+      length: SCENE_DURATIONS.cta - 0.3,
+      offsetY: 0.05,
+      width: 1020,
+      height: 520,
+      transitionIn: "zoom",
+      transitionOut: "fade",
+      effect: "zoomIn",
+    })
+  );
+  textTrack.push(
+    textCard({
+      html: `<div class="bn2">${escapeHtml(businessName)}</div>`,
+      css: `.bn2{width:920px;color:${colors.primary};font:600 54px/1.2 ${HEBREW_FONT_STACK};text-align:center;direction:rtl;}`,
+      start: cursor + 0.8,
+      length: SCENE_DURATIONS.cta - 0.9,
+      offsetY: -0.2,
+      transitionIn: "fade",
+      transitionOut: "fade",
+    })
+  );
 
-  // --- Scene 4: CTA finale with pulse (6s) ---
-  const scene4: J2VScene = {
-    duration: 6,
-    "background-color": colors.accent,
-    elements: [
-      ...((images[2] || images[0])
-        ? [
-            {
-              type: "image",
-              src: images[2] || images[0],
-              duration: 6,
-              start: 0,
-              "zoom-effect": "zoomIn",
-              opacity: 0.25,
-              position: "center-center",
-              width: 1080,
-              height: 1920,
-            } as J2VElement,
-          ]
-        : []),
-      {
-        type: "text",
-        text: shortCta,
-        start: 0.2,
-        duration: 5.6,
-        position: "center-center",
-        y: -80,
-        settings: {
-          "font-family": "Heebo",
-          "font-size": "118px",
-          "font-weight": "800",
-          color: colors.primary,
-          "text-align": "center",
-          "text-shadow": "0 4px 18px rgba(0,0,0,0.25)",
-        },
-        width: 960,
-        // Pulse via scale animation
-        "pan-effect": "pulse",
-        "fade-in": 0.4,
-      },
-      {
-        type: "text",
-        text: businessName,
-        start: 1.2,
-        duration: 4.6,
-        position: "center-center",
-        y: 260,
-        settings: {
-          "font-family": "Heebo",
-          "font-size": "54px",
-          "font-weight": "600",
-          color: colors.primary,
-          "text-align": "center",
-        },
-        "fade-in": 0.6,
-      },
-    ],
-  };
+  // ---- Watermark (free plan) ----
+  if (watermark) {
+    textTrack.push(
+      textCard({
+        html: `<div class="wm">נוצר ב-Kastly</div>`,
+        css: `.wm{width:320px;color:#ffffff;font:700 28px/1 ${HEBREW_FONT_STACK};background:rgba(0,0,0,0.55);padding:8px 16px;border-radius:10px;text-align:center;direction:rtl;}`,
+        start: 0,
+        length: TOTAL_DURATION,
+        position: "bottomRight",
+        width: 320,
+        height: 60,
+        transitionIn: "fade",
+        transitionOut: "fade",
+      })
+    );
+  }
 
-  // --- Global Hebrew narration spanning all scenes ---
-  const narrationScript = [
-    businessName,
-    shortHeadline,
-    shortBody,
-    benefits.length ? `היתרונות שלנו: ${benefits.join(", ")}.` : "",
-    shortCta,
-  ]
-    .filter(Boolean)
-    .join(". ");
+  // ---- Soundtrack + narration tracks ----
+  const musicUrl = pickMusicUrl(brand?.music_mood, brand?.category);
 
-  const globalElements: J2VElement[] = [
-    {
-      type: "voice",
-      text: narrationScript,
-      voice,
-      start: 0.4,
-      duration: -1,
-    },
+  const tracks: ShotstackTrack[] = [
+    { clips: textTrack },
+    { clips: imageTrack },
+    { clips: bgTrack },
   ];
 
-  const musicUrl = pickMusicUrl(brand?.music_mood, brand?.category);
-  if (musicUrl) {
-    globalElements.push({
-      type: "audio",
-      src: musicUrl,
-      start: 0,
-      duration: 30,
-      volume: 28,
-      "fade-in": 0.8,
-      "fade-out": 1.5,
+  if (narrationUrl) {
+    tracks.push({
+      clips: [
+        {
+          asset: { type: "audio", src: narrationUrl, volume: 1 },
+          start: 0.4,
+          length: TOTAL_DURATION - 0.4,
+        },
+      ],
     });
   }
 
-  if (watermark) {
-    globalElements.push({
-      type: "text",
-      text: "נוצר ב-Kastly",
-      start: 0,
-      duration: 30,
-      position: "bottom-right",
-      settings: {
-        "font-family": "Heebo",
-        "font-size": "32px",
-        "font-weight": "700",
-        color: "#ffffff",
-        "background-color": "rgba(0,0,0,0.6)",
-        padding: "6px 14px",
-        "border-radius": "10px",
-      },
-    });
-    globalElements.push({
-      type: "text",
-      text: "Kastly  ·  Kastly  ·  Kastly",
-      start: 0,
-      duration: 30,
-      position: "center-center",
-      settings: {
-        "font-family": "Heebo",
-        "font-size": "120px",
-        "font-weight": "800",
-        color: "rgba(255,255,255,0.08)",
-        "text-align": "center",
-        transform: "rotate(-22deg)",
-      },
-    });
+  const timeline: Record<string, unknown> = {
+    background: "#000000",
+    tracks,
+  };
+
+  if (musicUrl) {
+    timeline.soundtrack = {
+      src: musicUrl,
+      effect: "fadeInFadeOut",
+      volume: narrationUrl ? 0.18 : 0.5,
+    };
   }
 
   return {
-    resolution: "custom",
-    width: 1080,
-    height: 1920,
-    quality: "high",
-    scenes: [scene1, scene2, scene3, scene4],
-    elements: globalElements,
+    timeline,
+    output: {
+      format: "mp4",
+      size: { width: 1080, height: 1920 },
+      fps: 30,
+    },
   };
 }
 
+// --- Route handlers ------------------------------------------------------
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.JSON2VIDEO_API_KEY;
+  const apiKey = process.env.SHOTSTACK_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "שירות יצירת הסרטונים לא מוגדר. חסר JSON2VIDEO_API_KEY." },
+      { error: "שירות יצירת הסרטונים לא מוגדר. חסר SHOTSTACK_API_KEY." },
       { status: 503 }
     );
   }
@@ -408,30 +493,51 @@ export async function POST(request: NextRequest) {
 
     const isFreePlan = plan === "free" || !plan;
 
-    const movie = buildMovie({
+    const cleanImages = images.filter((x): x is string => typeof x === "string" && !!x);
+    const shortHeadline = truncate(headline, 70);
+    const shortBody = truncate(adBody || "", 140);
+    const shortCta = truncate(cta, 42);
+    const benefits = (features.length ? features : [shortBody])
+      .slice(0, 3)
+      .map((f) => truncate(f, 50));
+
+    const narrationScript = [
+      business_name,
+      shortHeadline,
+      shortBody,
+      benefits.length ? `היתרונות שלנו: ${benefits.join(", ")}.` : "",
+      shortCta,
+    ]
+      .filter(Boolean)
+      .join(". ");
+
+    const narrationUrl = await generateNarrationUrl(narrationScript);
+
+    const payload = buildRender({
       businessName: business_name,
       headline,
       body: adBody || "",
       cta,
       features,
-      images: images.filter((x): x is string => typeof x === "string" && !!x),
+      images: cleanImages,
       watermark: isFreePlan,
       brand: brand_profile,
+      narrationUrl,
     });
 
-    const res = await fetch(J2V_ENDPOINT, {
+    const res = await fetch(`${SHOTSTACK_BASE}/render`, {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(movie),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json().catch(() => null);
 
-    if (!res.ok || !data) {
-      console.error("JSON2Video error:", res.status, data);
+    if (!res.ok || !data?.success) {
+      console.error("Shotstack render error:", res.status, data);
       return NextResponse.json(
         {
           error: "יצירת הסרטון נכשלה. נסו שוב בעוד רגע.",
@@ -444,16 +550,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const projectId: string | undefined = data.project || data.id;
-    if (!projectId) {
+    const renderId: string | undefined = data?.response?.id;
+    if (!renderId) {
       return NextResponse.json(
-        { error: "לא התקבל מזהה פרויקט מהשרת" },
+        { error: "לא התקבל מזהה רינדור מהשרת" },
         { status: 502 }
       );
     }
 
     return NextResponse.json({
-      id: projectId,
+      id: renderId,
       status: "rendering",
       url: null,
     });
@@ -467,7 +573,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const apiKey = process.env.JSON2VIDEO_API_KEY;
+  const apiKey = process.env.SHOTSTACK_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "not configured" }, { status: 503 });
   }
@@ -479,27 +585,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(
-      `${J2V_ENDPOINT}?project=${encodeURIComponent(id)}`,
-      {
-        headers: { "x-api-key": apiKey },
-      }
-    );
+    const res = await fetch(`${SHOTSTACK_BASE}/render/${encodeURIComponent(id)}`, {
+      headers: { "x-api-key": apiKey },
+    });
 
     const data = await res.json().catch(() => null);
 
-    if (!res.ok || !data) {
+    if (!res.ok || !data?.success) {
       return NextResponse.json({ error: "status failed" }, { status: 502 });
     }
 
-    const movie = data.movie || data;
-    const rawStatus: string = movie.status || "unknown";
-    const url: string | null = movie.url || null;
+    const rawStatus: string = data?.response?.status ?? "unknown";
+    const url: string | null = data?.response?.url ?? null;
 
     let status: "rendering" | "succeeded" | "failed";
-    if (rawStatus === "done" || rawStatus === "completed" || url) {
+    if (rawStatus === "done" || url) {
       status = "succeeded";
-    } else if (rawStatus === "error" || rawStatus === "failed") {
+    } else if (rawStatus === "failed") {
       status = "failed";
     } else {
       status = "rendering";
