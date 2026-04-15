@@ -8,26 +8,18 @@ const PLATFORM_DIMENSIONS: Record<string, { width: number; height: number }> = {
   story: { width: 1080, height: 1920 },
 };
 
-const CATEGORY_STYLE: Record<string, string> = {
-  food: "appetizing close-up with rich warm tones, soft golden-hour window light, shallow depth of field, food editorial photography, artisanal natural styling",
-  tech: "minimal modern product scene, clean geometric composition, crisp soft studio light on matte background, subtle gradient, premium tech editorial",
-  beauty: "soft diffused lighting, pastel palette, elegant minimal composition, editorial beauty photography, fine skin texture, gentle bokeh",
-  fitness: "high-contrast dynamic action, dramatic rim lighting, motion energy, dark moody background with bright key subject, athletic editorial",
-  luxury: "dramatic chiaroscuro lighting, deep tones with gold accents, refined textures, premium editorial photography, slow elegant mood",
-  home: "natural earthy styling, warm daylight through window, lived-in cozy interior context, lifestyle magazine photography, inviting",
-  professional: "clean corporate scene, bright even lighting, modern office aesthetic, confident composition, business editorial polish",
-  playful: "bright pop colors, playful geometric composition, crisp flat studio light, friendly energetic vibe",
-  other: "premium commercial photography, natural lighting, carefully composed, editorial marketing style",
-};
-
-const TONE_MODIFIER: Record<string, string> = {
-  warm: "warm inviting mood",
-  professional: "confident professional mood",
-  energetic: "high-energy kinetic mood",
-  luxurious: "refined premium mood",
-  cozy: "intimate cozy mood",
-  tech: "sleek futuristic mood",
-  playful: "upbeat playful mood",
+// Category-specific scene language. This shapes the environment, lighting,
+// and mood — the actual SUBJECT comes from Claude's prompt per business.
+const CATEGORY_SCENE: Record<string, string> = {
+  food: "appetizing food photography, warm golden bokeh, gentle steam rising, fresh textures, artisan styling",
+  tech: "clean minimal tech environment, soft cool blue tones, modern workspace, subtle glowing screens",
+  beauty: "soft pastel aesthetic, natural diffused light, elegant clean background, fine skin texture",
+  fitness: "dynamic high-energy action, dramatic rim lighting, powerful motion atmosphere, athletic intensity",
+  luxury: "refined chiaroscuro lighting, deep tones with gold and cream, premium editorial mood",
+  home: "warm lifestyle interior, golden hour light through windows, cozy lived-in atmosphere",
+  professional: "corporate confidence, clean architectural lines, natural window light, modern office",
+  playful: "bright pop colors, playful geometric staging, crisp flat studio light, upbeat vibe",
+  other: "premium commercial scene, careful composition, natural cinematic lighting",
 };
 
 export const maxDuration = 120;
@@ -42,44 +34,46 @@ interface BrandColors {
 
 interface BrandProfile {
   category?: string;
-  tone?: string;
   colors?: BrandColors;
 }
 
-// Strip any non-Latin / Hebrew characters that slipped through — Flux works
-// best in English and degrades sharply on Hebrew tokens.
+// Strip any non-Latin characters (Hebrew, Arabic) — Flux degrades sharply
+// on non-English tokens and they leak through sometimes.
 function sanitizeToEnglish(input: string): string {
-  // Remove Hebrew block and Arabic block entirely
-  return input.replace(/[\u0590-\u05FF\u0600-\u06FF]+/g, " ").replace(/\s+/g, " ").trim();
+  return input
+    .replace(/[\u0590-\u05FF\u0600-\u06FF]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function enhancePrompt(basePrompt: string, brand: BrandProfile | null): string {
+function buildFinalPrompt(basePrompt: string, brand: BrandProfile | null): string {
   const safeBase = sanitizeToEnglish(basePrompt);
   const category = (brand?.category || "other").toLowerCase();
-  const tone = (brand?.tone || "").toLowerCase();
-  const styleLine = CATEGORY_STYLE[category] || CATEGORY_STYLE.other;
-  const toneLine = TONE_MODIFIER[tone] || "";
+  const scene = CATEGORY_SCENE[category] || CATEGORY_SCENE.other;
 
-  const paletteBits: string[] = [];
-  if (brand?.colors?.primary) paletteBits.push(`dominant ${brand.colors.primary}`);
-  if (brand?.colors?.secondary) paletteBits.push(`supporting ${brand.colors.secondary}`);
-  if (brand?.colors?.accent) paletteBits.push(`accent ${brand.colors.accent}`);
-  const palette = paletteBits.length
-    ? `color palette: ${paletteBits.join(", ")} — colors must read clearly in the image`
+  const hexParts: string[] = [];
+  if (brand?.colors?.primary) hexParts.push(brand.colors.primary);
+  if (brand?.colors?.secondary) hexParts.push(brand.colors.secondary);
+  if (brand?.colors?.accent) hexParts.push(brand.colors.accent);
+  const hexLine = hexParts.length
+    ? `brand hex colors: ${hexParts.join(" ")}`
     : "";
 
+  // Strict structured template — NO TEXT guards at both ends.
   const parts = [
+    "NO TEXT NO WORDS NO LETTERS NO SIGNS NO WATERMARKS NO OVERLAYS NO TYPOGRAPHY",
     safeBase,
-    styleLine,
-    toneLine,
-    palette,
-    "shot on full-frame camera, 85mm lens at f/1.8, natural composition, ultra-detailed, razor-sharp focus on subject",
-    "professional marketing photo, editorial ad photography, premium brand campaign, looks shot by a top-tier commercial photographer",
-    "photorealistic, no illustration, no 3d render, no cartoon, no stock-photo look",
-    "absolutely no text, no letters, no words, no numbers, no watermarks, no logos, no captions, no signage typography",
+    scene,
+    "professional marketing photography",
+    "shot on Sony A7R IV with 85mm f/1.4 lens",
+    "natural cinematic lighting, editorial advertising style",
+    hexLine,
+    "pure clean photographic scene only",
+    "hyper realistic, ultra high resolution, award winning photography",
+    "NO TEXT NO WORDS NO LETTERS NO SIGNS NO WATERMARKS NO OVERLAYS NO TYPOGRAPHY",
   ].filter(Boolean);
 
-  return parts.join(". ");
+  return parts.join(", ");
 }
 
 export async function POST(request: NextRequest) {
@@ -108,7 +102,7 @@ export async function POST(request: NextRequest) {
       auth: process.env.REPLICATE_API_TOKEN!,
     });
 
-    const finalPrompt = enhancePrompt(prompt, brand_profile || null);
+    const finalPrompt = buildFinalPrompt(prompt, brand_profile || null);
 
     const output = await runWithRetry(async () =>
       replicate.run("black-forest-labs/flux-1.1-pro", {
@@ -119,7 +113,7 @@ export async function POST(request: NextRequest) {
           output_format: "webp",
           output_quality: 92,
           safety_tolerance: 2,
-          prompt_upsampling: true,
+          prompt_upsampling: false,
         },
       })
     );

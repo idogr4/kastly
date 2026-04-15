@@ -96,7 +96,10 @@ const TOTAL_DURATION =
 type ShotstackClip = Record<string, unknown>;
 type ShotstackTrack = { clips: ShotstackClip[] };
 
-function textCard(opts: {
+const HEBREW_FONT_STACK =
+  "'Rubik','Heebo','Assistant','Noto Sans Hebrew',Arial,sans-serif";
+
+function htmlTextClip(opts: {
   html: string;
   css: string;
   start: number;
@@ -109,26 +112,26 @@ function textCard(opts: {
   position?: string;
   offsetY?: number;
 }): ShotstackClip {
-  return {
+  const clip: ShotstackClip = {
     asset: {
       type: "html",
       html: opts.html,
       css: opts.css,
-      width: opts.width ?? 960,
+      width: opts.width ?? 1000,
       height: opts.height ?? 400,
       background: "transparent",
     },
     start: opts.start,
     length: opts.length,
     position: opts.position ?? "center",
-    offset: opts.offsetY !== undefined ? { y: opts.offsetY } : undefined,
     transition: {
       in: opts.transitionIn ?? "fade",
       out: opts.transitionOut ?? "fade",
     },
-    effect: opts.effect,
-    fit: "none",
   };
+  if (opts.offsetY !== undefined) clip.offset = { x: 0, y: opts.offsetY };
+  if (opts.effect) clip.effect = opts.effect;
+  return clip;
 }
 
 function imageClip(opts: {
@@ -163,11 +166,9 @@ function solidBg(color: string, start: number, length: number): ShotstackClip {
     start,
     length,
     fit: "cover",
+    transition: { in: "fade", out: "fade" },
   };
 }
-
-const HEBREW_FONT_STACK =
-  "'Rubik','Heebo','Assistant','Noto Sans Hebrew',Arial,sans-serif";
 
 function buildRender(args: {
   businessName: string;
@@ -209,28 +210,28 @@ function buildRender(args: {
     );
   }
   textTrack.push(
-    textCard({
-      html: `<div class="brand">${escapeHtml(businessName)}</div>`,
-      css: `.brand{width:1000px;color:${colors.accent};font:900 140px/1.05 ${HEBREW_FONT_STACK};letter-spacing:-2px;text-align:center;direction:rtl;text-shadow:0 8px 30px rgba(0,0,0,0.55);}`,
+    htmlTextClip({
+      html: `<p class="brand">${escapeHtml(businessName)}</p>`,
+      css: `.brand{width:1000px;margin:0;color:${colors.accent};font-family:${HEBREW_FONT_STACK};font-weight:900;font-size:140px;line-height:1.05;letter-spacing:-2px;text-align:center;direction:rtl;text-shadow:0 8px 30px rgba(0,0,0,0.55);}`,
       start: cursor + 0.2,
       length: SCENE_DURATIONS.opener - 0.3,
       offsetY: 0.22,
       width: 1020,
-      height: 340,
+      height: 360,
       transitionIn: "fade",
       transitionOut: "fade",
     })
   );
   textTrack.push(
-    textCard({
-      html: `<div class="hl">${escapeHtml(shortHeadline)}</div>`,
-      css: `.hl{width:980px;color:${colors.text};font:700 72px/1.25 ${HEBREW_FONT_STACK};text-align:center;direction:rtl;text-shadow:0 4px 22px rgba(0,0,0,0.55);}`,
+    htmlTextClip({
+      html: `<p class="hl">${escapeHtml(shortHeadline)}</p>`,
+      css: `.hl{width:980px;margin:0;color:${colors.text};font-family:${HEBREW_FONT_STACK};font-weight:700;font-size:72px;line-height:1.25;text-align:center;direction:rtl;text-shadow:0 4px 22px rgba(0,0,0,0.55);}`,
       start: cursor + 1.2,
       length: SCENE_DURATIONS.opener - 1.3,
       offsetY: -0.12,
       width: 1000,
       height: 520,
-      transitionIn: "fade",
+      transitionIn: "slideUp",
       transitionOut: "fade",
     })
   );
@@ -252,9 +253,9 @@ function buildRender(args: {
     );
   }
   textTrack.push(
-    textCard({
-      html: `<div class="desc"><div class="pill">${escapeHtml(shortBody)}</div></div>`,
-      css: `.desc{width:1000px;direction:rtl;text-align:center;}.pill{display:inline-block;padding:34px 46px;border-radius:36px;background:rgba(0,0,0,0.62);color:#ffffff;font:700 62px/1.3 ${HEBREW_FONT_STACK};backdrop-filter:blur(6px);box-shadow:0 12px 40px rgba(0,0,0,0.35);}`,
+    htmlTextClip({
+      html: `<div class="desc"><span class="pill">${escapeHtml(shortBody)}</span></div>`,
+      css: `.desc{width:1000px;text-align:center;}.pill{display:inline-block;padding:34px 46px;border-radius:36px;background:rgba(0,0,0,0.62);color:#ffffff;font-family:${HEBREW_FONT_STACK};font-weight:700;font-size:62px;line-height:1.3;direction:rtl;}`,
       start: cursor + 0.6,
       length: SCENE_DURATIONS.hero - 0.8,
       offsetY: -0.3,
@@ -270,9 +271,9 @@ function buildRender(args: {
   // ---- Scene 3: 3 huge benefits with staggered fade-in ----
   bgTrack.push(solidBg(colors.primary, cursor, SCENE_DURATIONS.benefits));
   textTrack.push(
-    textCard({
-      html: `<div class="hdr">${escapeHtml("למה אנחנו?")}</div>`,
-      css: `.hdr{width:960px;color:${colors.accent};font:800 78px/1.15 ${HEBREW_FONT_STACK};text-align:center;direction:rtl;letter-spacing:-1px;}`,
+    htmlTextClip({
+      html: `<p class="hdr">${escapeHtml("למה אנחנו?")}</p>`,
+      css: `.hdr{width:960px;margin:0;color:${colors.accent};font-family:${HEBREW_FONT_STACK};font-weight:800;font-size:78px;line-height:1.15;text-align:center;direction:rtl;letter-spacing:-1px;}`,
       start: cursor + 0.3,
       length: SCENE_DURATIONS.benefits - 0.4,
       offsetY: 0.36,
@@ -283,9 +284,9 @@ function buildRender(args: {
   benefits.forEach((b, i) => {
     const slot = 1.0 + i * 1.8;
     textTrack.push(
-      textCard({
-        html: `<div class="bn"><span class="dot">✦</span>${escapeHtml(b)}</div>`,
-        css: `.bn{width:960px;direction:rtl;color:${colors.text};font:700 62px/1.3 ${HEBREW_FONT_STACK};text-align:center;}.dot{color:${colors.accent};margin-left:22px;}`,
+      htmlTextClip({
+        html: `<p class="bn"><span class="dot">✦</span>${escapeHtml(b)}</p>`,
+        css: `.bn{width:960px;margin:0;color:${colors.text};font-family:${HEBREW_FONT_STACK};font-weight:700;font-size:58px;line-height:1.3;text-align:center;direction:rtl;}.dot{color:${colors.accent};margin-left:22px;}`,
         start: cursor + slot,
         length: SCENE_DURATIONS.benefits - slot - 0.2,
         offsetY: 0.08 - i * 0.2,
@@ -301,10 +302,11 @@ function buildRender(args: {
 
   // ---- Scene 4: Massive CTA finale with pulse zoom ----
   bgTrack.push(solidBg(colors.accent, cursor, SCENE_DURATIONS.cta));
-  if (images[2] || images[0]) {
+  const ctaImg = images[2] || images[0];
+  if (ctaImg) {
     imageTrack.push(
       imageClip({
-        src: (images[2] || images[0])!,
+        src: ctaImg,
         start: cursor,
         length: SCENE_DURATIONS.cta,
         effect: "zoomIn",
@@ -313,9 +315,9 @@ function buildRender(args: {
     );
   }
   textTrack.push(
-    textCard({
-      html: `<div class="cta">${escapeHtml(shortCta)}</div>`,
-      css: `.cta{width:1000px;color:${colors.primary};font:900 150px/1.1 ${HEBREW_FONT_STACK};letter-spacing:-2px;text-align:center;direction:rtl;text-shadow:0 8px 28px rgba(0,0,0,0.2);}`,
+    htmlTextClip({
+      html: `<p class="cta">${escapeHtml(shortCta)}</p>`,
+      css: `.cta{width:1000px;margin:0;color:${colors.primary};font-family:${HEBREW_FONT_STACK};font-weight:900;font-size:140px;line-height:1.1;letter-spacing:-2px;text-align:center;direction:rtl;text-shadow:0 8px 28px rgba(0,0,0,0.18);}`,
       start: cursor + 0.15,
       length: SCENE_DURATIONS.cta - 0.25,
       offsetY: 0.05,
@@ -327,9 +329,9 @@ function buildRender(args: {
     })
   );
   textTrack.push(
-    textCard({
-      html: `<div class="bn2">${escapeHtml(businessName)}</div>`,
-      css: `.bn2{width:920px;color:${colors.primary};font:700 62px/1.2 ${HEBREW_FONT_STACK};text-align:center;direction:rtl;}`,
+    htmlTextClip({
+      html: `<p class="bn2">${escapeHtml(businessName)}</p>`,
+      css: `.bn2{width:920px;margin:0;color:${colors.primary};font-family:${HEBREW_FONT_STACK};font-weight:700;font-size:56px;line-height:1.2;text-align:center;direction:rtl;}`,
       start: cursor + 0.7,
       length: SCENE_DURATIONS.cta - 0.8,
       offsetY: -0.22,
@@ -341,9 +343,9 @@ function buildRender(args: {
   // ---- Watermark (free plan) ----
   if (watermark) {
     textTrack.push(
-      textCard({
-        html: `<div class="wm">נוצר ב-Kastly</div>`,
-        css: `.wm{width:320px;color:#ffffff;font:700 28px/1 ${HEBREW_FONT_STACK};background:rgba(0,0,0,0.55);padding:8px 16px;border-radius:10px;text-align:center;direction:rtl;}`,
+      htmlTextClip({
+        html: `<p class="wm">נוצר ב-Kastly</p>`,
+        css: `.wm{width:280px;margin:0;color:#ffffff;font-family:${HEBREW_FONT_STACK};font-weight:700;font-size:26px;background:rgba(0,0,0,0.55);padding:8px 14px;border-radius:10px;text-align:center;direction:rtl;}`,
         start: 0,
         length: TOTAL_DURATION,
         position: "bottomRight",
@@ -387,11 +389,27 @@ function buildRender(args: {
 }
 
 // --- Route handlers ------------------------------------------------------
+function extractShotstackError(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const d = data as {
+    message?: string;
+    response?: { error?: string; message?: string };
+    error?: string;
+  };
+  return (
+    d.response?.error ||
+    d.response?.message ||
+    d.message ||
+    d.error ||
+    JSON.stringify(data).slice(0, 300)
+  );
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = process.env.SHOTSTACK_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "שירות יצירת הסרטונים לא מוגדר. חסר SHOTSTACK_API_KEY." },
+      { error: "שירות יצירת הסרטונים לא מוגדר. חסר SHOTSTACK_API_KEY בפרודקשן." },
       { status: 503 }
     );
   }
@@ -417,7 +435,6 @@ export async function POST(request: NextRequest) {
     }
 
     const isFreePlan = plan === "free" || !plan;
-
     const cleanImages = images.filter((x): x is string => typeof x === "string" && !!x);
 
     const payload = buildRender({
@@ -436,30 +453,47 @@ export async function POST(request: NextRequest) {
       headers: {
         "x-api-key": apiKey,
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
       body: JSON.stringify(payload),
     });
 
-    const data = await res.json().catch(() => null);
+    const rawText = await res.text();
+    let data: unknown = null;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { raw: rawText };
+    }
 
-    if (!res.ok || !data?.success) {
-      console.error("Shotstack render error:", res.status, data);
+    if (!res.ok) {
+      const detail = extractShotstackError(data);
+      console.error("Shotstack render HTTP error:", res.status, detail, rawText.slice(0, 500));
       return NextResponse.json(
         {
-          error: "יצירת הסרטון נכשלה. נסו שוב בעוד רגע.",
-          detail:
-            typeof data === "object" && data !== null
-              ? JSON.stringify(data).slice(0, 400)
-              : undefined,
+          error: `יצירת הסרטון נכשלה (Shotstack ${res.status}). ${detail ?? ""}`.trim(),
+          detail,
         },
         { status: 502 }
       );
     }
 
-    const renderId: string | undefined = data?.response?.id;
-    if (!renderId) {
+    const d = data as { success?: boolean; response?: { id?: string } };
+
+    if (d?.success === false) {
+      const detail = extractShotstackError(data);
+      console.error("Shotstack render rejected:", detail);
       return NextResponse.json(
-        { error: "לא התקבל מזהה רינדור מהשרת" },
+        { error: `Shotstack דחה את הבקשה. ${detail ?? ""}`.trim(), detail },
+        { status: 502 }
+      );
+    }
+
+    const renderId = d?.response?.id;
+    if (!renderId) {
+      console.error("Shotstack render missing id:", data);
+      return NextResponse.json(
+        { error: "לא התקבל מזהה רינדור מהשרת", detail: extractShotstackError(data) },
         { status: 502 }
       );
     }
@@ -492,17 +526,23 @@ export async function GET(request: NextRequest) {
 
   try {
     const res = await fetch(`${SHOTSTACK_BASE}/render/${encodeURIComponent(id)}`, {
-      headers: { "x-api-key": apiKey },
+      headers: { "x-api-key": apiKey, Accept: "application/json" },
     });
 
     const data = await res.json().catch(() => null);
 
-    if (!res.ok || !data?.success) {
+    if (!res.ok) {
+      console.error("Shotstack status error:", res.status, data);
       return NextResponse.json({ error: "status failed" }, { status: 502 });
     }
 
-    const rawStatus: string = data?.response?.status ?? "unknown";
-    const url: string | null = data?.response?.url ?? null;
+    const d = data as {
+      success?: boolean;
+      response?: { status?: string; url?: string | null; error?: string };
+    };
+
+    const rawStatus: string = d?.response?.status ?? "unknown";
+    const url: string | null = d?.response?.url ?? null;
 
     let status: "rendering" | "succeeded" | "failed";
     if (rawStatus === "done" || url) {

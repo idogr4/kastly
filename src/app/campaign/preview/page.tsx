@@ -72,9 +72,18 @@ interface Campaign {
   instagram: AdVariation[];
   linkedin: AdVariation[];
   landing_page: {
+    hero_eyebrow?: string;
     hero_headline: string;
     hero_subheadline: string;
-    features: string[];
+    primary_cta?: string;
+    secondary_cta?: string;
+    social_proof_line?: string;
+    testimonial_quote?: string;
+    testimonial_attribution?: string;
+    features: Array<string | { title: string; description: string }>;
+    how_it_works?: Array<{ title: string; description: string }>;
+    final_cta_headline?: string;
+    final_cta_subline?: string;
     cta: string;
   };
   image_prompts?: {
@@ -934,7 +943,7 @@ function ResultsView({
             </div>
             <CopyButton
               label="העתק את כל הדף"
-              text={`${campaign.landing_page.hero_headline}\n\n${campaign.landing_page.hero_subheadline}\n\n${campaign.landing_page.features.join("\n")}\n\n${campaign.landing_page.cta}`}
+              text={`${campaign.landing_page.hero_headline}\n\n${campaign.landing_page.hero_subheadline}\n\n${(campaign.landing_page.features || []).map((f) => (typeof f === "string" ? f : `${f.title}: ${f.description}`)).join("\n")}\n\n${campaign.landing_page.cta}`}
             />
           </div>
 
@@ -959,11 +968,14 @@ function ResultsView({
                 </div>
               </div>
               <div className="flex flex-col gap-2 items-center">
-                {campaign.landing_page.features.map((f, i) => (
-                  <span key={i} className="text-sm text-foreground">
-                    {f}
-                  </span>
-                ))}
+                {(campaign.landing_page.features || []).map((f, i) => {
+                  const label = typeof f === "string" ? f : f.title;
+                  return (
+                    <span key={i} className="text-sm text-foreground">
+                      {label}
+                    </span>
+                  );
+                })}
               </div>
               <div className="inline-block">
                 <span className="inline-block px-6 py-3 bg-primary text-white rounded-xl text-sm font-medium">
@@ -1660,7 +1672,9 @@ function VideoSection({
           headline: bestAd.headline,
           body: bestAd.body,
           cta: bestAd.cta,
-          features: campaign.landing_page?.features || [],
+          features: (campaign.landing_page?.features || []).map((f) =>
+            typeof f === "string" ? f : `${f.title} — ${f.description}`
+          ),
           images: imgs,
           plan,
           brand_profile: campaign.brand_profile,
